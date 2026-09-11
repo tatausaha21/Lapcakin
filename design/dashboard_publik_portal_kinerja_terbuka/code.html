@@ -1,0 +1,733 @@
+<!DOCTYPE html><html lang="id" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Transparansi &amp; Akuntabilitas Kinerja Berjenjang - Tahun 2026</title>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            emeraldPortal: {
+              900: '#00382E',
+              850: '#014438',
+              800: '#004D40',
+              700: '#0B5345',
+              600: '#0E6655',
+              100: '#E1EFEA',
+              50: '#F0F7F4'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+<!-- Google Fonts Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<!-- Custom Decorative Pattern Style -->
+<style data-purpose="background-pattern">
+    .bg-batik-grid {
+      background-color: #004D40;
+      background-image: 
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%),
+        linear-gradient(225deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%),
+        linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%),
+        linear-gradient(315deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%);
+      background-position: 0 0, 24px 0, 24px 0, 0 0, 0 0;
+      background-size: 48px 48px;
+    }
+    
+    .capping-dashed-line {
+      background-image: linear-gradient(to right, #059669 50%, rgba(255, 255, 255, 0) 0%);
+      background-position: bottom;
+      background-size: 10px 2px;
+      background-repeat: repeat-x;
+    }
+  </style>
+</head>
+<body class="bg-batik-grid text-slate-800 min-h-screen font-sans antialiased selection:bg-emerald-500 selection:text-white pb-16">
+<!-- BEGIN: TopNavigationBar -->
+<header class="w-full px-4 sm:px-8 lg:px-12 pt-6 pb-4" data-purpose="top-navigation">
+<div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+<!-- Kementerian / Logo Indicator -->
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center text-white shadow-inner">
+<svg class="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div>
+<span class="text-xs font-semibold tracking-wider text-emerald-200 uppercase block">Portal Kinerja Terbuka</span>
+<span class="text-sm font-bold text-white tracking-wide">Sistem Pengukuran Kinerja Kemenag 2026</span>
+</div>
+</div>
+<!-- Action Navigation Buttons -->
+<div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+<!-- Secondary Button: Masuk Untuk Mengisi Laporan -->
+<button class="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs md:text-sm font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/25 backdrop-blur-md transition-all duration-200 shadow-sm hover:shadow active:scale-95" data-purpose="report-entry-button" onclick="openLoginModal('Laporan Pegawai')" type="button">
+<svg class="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<ellipse cx="12" cy="5" rx="9" ry="3" stroke-width="2"></ellipse>
+<path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" stroke-width="2"></path>
+<path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" stroke-width="2"></path>
+</svg>
+<span class="">Masuk Untuk Mengisi Laporan</span>
+</button>
+<!-- Primary Button: Masuk Dropdown/Modal -->
+<button class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs md:text-sm font-bold text-emerald-900 bg-white hover:bg-slate-100 shadow-lg shadow-black/15 transition-all duration-200 active:scale-95 border border-white" data-purpose="user-login-button" onclick="openLoginModal('Otentikasi')" type="button">
+<svg class="w-4 h-4 text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
+</svg>
+<span class="">Masuk</span>
+</button>
+</div>
+</div>
+</header>
+<!-- END: TopNavigationBar -->
+<!-- BEGIN: MainContent -->
+<main class="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pt-4">
+<!-- Hero Title & Year Badge -->
+<section class="mb-7" data-purpose="hero-section">
+<!-- Badge Pill -->
+<div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-850/80 border border-emerald-500/30 text-emerald-100 text-xs font-medium backdrop-blur shadow-sm mb-3">
+<svg class="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+<span class="">Rekapitulasi Capaian Kinerja Terbuka — Tahun 2026</span>
+</div>
+<!-- Main Headline -->
+<h1 class="text-3xl sm:text-4xl lg:text-[40px] font-extrabold text-white tracking-tight leading-tight">
+        Transparansi &amp; Akuntabilitas Kinerja Berjenjang
+      </h1>
+<!-- Subheadline / Regulation Reference -->
+<p class="mt-2 text-emerald-100/90 text-sm sm:text-base max-w-3xl leading-relaxed font-normal">
+        Perhitungan kinerja pegawai terakumulasi otomatis ke tingkat Seksi/Satker hingga Capaian Kinerja Organisasi, sesuai KMA Nomor 1807 Tahun 2025.
+      </p>
+</section>
+<!-- BEGIN: TopKpiCards -->
+<section class="mb-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 sm:p-5 shadow-xl overflow-hidden" data-purpose="performance-photo-gallery">
+  <!-- Header & Navigation Controls -->
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+    <div>
+      <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-[10px] font-bold uppercase tracking-wider mb-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        Dokumentasi Lapangan
+      </div>
+      <h2 class="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+        Galeri Potret Pelaksanaan Kinerja Lapang
+      </h2>
+      <p class="text-xs text-emerald-100/80 font-normal mt-0.5">Potret realisasi program kerja, pembinaan, dan akuntabilitas pelayanan publik tahun 2026</p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+      <div class="flex gap-1 mr-2" id="carouselIndicators">
+        <span class="w-5 h-1.5 rounded-full bg-emerald-300"></span>
+        <span class="w-2 h-1.5 rounded-full bg-white/30"></span>
+        <span class="w-2 h-1.5 rounded-full bg-white/30"></span>
+        <span class="w-2 h-1.5 rounded-full bg-white/30"></span>
+      </div>
+      <button onclick="document.getElementById('galleryScrollContainer').scrollBy({left: -320, behavior: 'smooth'})" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-95 shadow-sm" aria-label="Slide sebelumnya" type="button">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <button onclick="document.getElementById('galleryScrollContainer').scrollBy({left: 320, behavior: 'smooth'})" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-95 shadow-sm" aria-label="Slide berikutnya" type="button">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Horizontal Scroll Container -->
+  <div id="galleryScrollContainer" class="flex gap-4 overflow-x-auto pb-2 pt-1 scroll-smooth snap-x snap-mandatory" style="scrollbar-width: thin;">
+    <!-- Slide Card 1 -->
+    <div class="min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 bg-white rounded-xl overflow-hidden shadow-lg border border-slate-100/20 group snap-start flex flex-col">
+      <div class="relative h-44 overflow-hidden bg-emerald-950">
+        <img src="https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="Rapat Koordinasi Evaluasi Kinerja Triwulan" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        <span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-wide shadow-sm">
+          Subbag TU
+        </span>
+        <span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-emerald-100 text-[10px] font-medium">
+          20 Jan 2026
+        </span>
+      </div>
+      <div class="p-3.5 flex-1 flex flex-col justify-between bg-white text-slate-800">
+        <div>
+          <h3 class="text-xs font-bold text-slate-900 leading-snug group-hover:text-emerald-700 transition">
+            Rapat Koordinasi Evaluasi &amp; Sinkronisasi Perjanjian Kinerja 2026
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+            Penetapan target IKSK berbasis KMA 1807 bersama seluruh kepala seksi dan pejabat perencana.
+          </p>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-emerald-800 font-semibold">
+          <span class="inline-flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+            Dokumen Terverifikasi
+          </span>
+          <span class="text-slate-400 font-normal">Aula Utama</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide Card 2 -->
+    <div class="min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 bg-white rounded-xl overflow-hidden shadow-lg border border-slate-100/20 group snap-start flex flex-col">
+      <div class="relative h-44 overflow-hidden bg-emerald-950">
+        <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="Bimtek Digitalisasi Pembelajaran Madrasah" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        <span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-md bg-blue-700 text-white text-[10px] font-bold uppercase tracking-wide shadow-sm">
+          Seksi Madrasah
+        </span>
+        <span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-emerald-100 text-[10px] font-medium">
+          18 Jan 2026
+        </span>
+      </div>
+      <div class="p-3.5 flex-1 flex flex-col justify-between bg-white text-slate-800">
+        <div>
+          <h3 class="text-xs font-bold text-slate-900 leading-snug group-hover:text-emerald-700 transition">
+            Bimtek Akreditasi &amp; Digitalisasi Rapor Madrasah Berkelanjutan
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+            Monitoring capaian mutu guru dan realisasi anggaran BOS madrasah swasta triwulan berjalan.
+          </p>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-emerald-800 font-semibold">
+          <span class="inline-flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+            Capaian 100%
+          </span>
+          <span class="text-slate-400 font-normal">MAN 1 Model</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide Card 3 -->
+    <div class="min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 bg-white rounded-xl overflow-hidden shadow-lg border border-slate-100/20 group snap-start flex flex-col">
+      <div class="relative h-44 overflow-hidden bg-emerald-950">
+        <img src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="Monitoring Revitalisasi Layanan KUA" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        <span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-md bg-emerald-800 text-white text-[10px] font-bold uppercase tracking-wide shadow-sm">
+          Bimas Islam
+        </span>
+        <span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-emerald-100 text-[10px] font-medium">
+          15 Jan 2026
+        </span>
+      </div>
+      <div class="p-3.5 flex-1 flex flex-col justify-between bg-white text-slate-800">
+        <div>
+          <h3 class="text-xs font-bold text-slate-900 leading-snug group-hover:text-emerald-700 transition">
+            Inspeksi Lapangan Revitalisasi KUA Ramah Inklusi &amp; Simkah
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+            Peninjauan kepatuhan SOP pencatatan pernikahan dan standarisasi fasilitas bimbingan calon pengantin.
+          </p>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-emerald-800 font-semibold">
+          <span class="inline-flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+            94.8% Akurasi
+          </span>
+          <span class="text-slate-400 font-normal">KUA Kec. Kota</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide Card 4 -->
+    <div class="min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 bg-white rounded-xl overflow-hidden shadow-lg border border-slate-100/20 group snap-start flex flex-col">
+      <div class="relative h-44 overflow-hidden bg-emerald-950">
+        <img src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="Verifikasi Berkas Jamaah Haji &amp; Umrah" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        <span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wide shadow-sm">
+          Seksi PHU
+        </span>
+        <span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-emerald-100 text-[10px] font-medium">
+          12 Jan 2026
+        </span>
+      </div>
+      <div class="p-3.5 flex-1 flex flex-col justify-between bg-white text-slate-800">
+        <div>
+          <h3 class="text-xs font-bold text-slate-900 leading-snug group-hover:text-emerald-700 transition">
+            Verifikasi Pelunasan Bipih &amp; Dokumen Paspor Jamaah Reguler
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+            Pemeriksaan bio-visa terpadu bersama instansi keimigrasian demi kelancaran pemberangkatan musim 1447H.
+          </p>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-emerald-800 font-semibold">
+          <span class="inline-flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+            On Schedule
+          </span>
+          <span class="text-slate-400 font-normal">PLHUT Terpadu</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section><section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4" data-purpose="kpi-cards-grid">
+<!-- Card 1: Persentase Capaian Organisasi -->
+<div class="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between relative overflow-hidden group hover:shadow-xl transition-shadow">
+<div>
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-emerald-700 flex items-center justify-center text-white shrink-0 shadow-sm">
+<!-- Ribbon/Award Icon -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<span class="text-[11px] font-bold tracking-wider text-slate-500 uppercase leading-snug">
+              PERSENTASE CAPAIAN ORGANISASI
+            </span>
+</div>
+<div class="mt-4 flex items-baseline gap-2">
+<span class="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">0,00%</span>
+</div>
+<div class="mt-1 flex items-center gap-1.5 text-xs">
+<span class="text-slate-500 font-medium">Predikat:</span>
+<span class="inline-block px-2 py-0.5 text-[11px] font-bold rounded-md bg-rose-100 text-rose-700 border border-rose-200">
+              Kurang
+            </span>
+</div>
+</div>
+<!-- Subtle Progress Line Indicator -->
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-5 overflow-hidden">
+<div class="bg-rose-500 h-full w-[5%]" title="0.00%"></div>
+</div>
+</div>
+<!-- Card 2: Persentase Capaian Realisasi Target -->
+<div class="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between relative overflow-hidden group hover:shadow-xl transition-shadow">
+<div>
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+<!-- Target Bullseye Icon -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="9" stroke-width="2"></circle>
+<circle cx="12" cy="12" r="5" stroke-width="2"></circle>
+<circle cx="12" cy="12" r="1.5" stroke-width="2"></circle>
+</svg>
+</div>
+<span class="text-[11px] font-bold tracking-wider text-slate-500 uppercase leading-snug">
+              PERSENTASE CAPAIAN REALISASI TARGET
+            </span>
+</div>
+<div class="mt-4 flex items-baseline gap-2">
+<span class="text-3xl lg:text-4xl font-extrabold text-blue-600 tracking-tight">95,00%</span>
+</div>
+<div class="mt-1 flex items-center gap-1.5 text-xs text-slate-600">
+<span class="">Benchmark Target:</span>
+<span class="font-bold text-slate-900">100.00%</span>
+</div>
+</div>
+<!-- Blue Benchmark Progress Bar -->
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-5 overflow-hidden">
+<div class="bg-blue-600 h-full w-[95%] rounded-full shadow-sm" title="95.00%"></div>
+</div>
+</div>
+<!-- Card 3: Persentase Realisasi Anggaran -->
+<div class="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between relative overflow-hidden group hover:shadow-xl transition-shadow">
+<div>
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shrink-0 shadow-sm font-black text-lg">
+              $
+            </div>
+<span class="text-[11px] font-bold tracking-wider text-slate-500 uppercase leading-snug">
+              PERSENTASE REALISASI ANGGARAN
+            </span>
+</div>
+<div class="mt-4 flex items-baseline gap-2">
+<span class="text-3xl lg:text-4xl font-extrabold text-amber-500 tracking-tight">0,00%</span>
+</div>
+<div class="mt-1 text-xs text-slate-500 font-medium">
+            Rp 0.0jt <span class="text-slate-400">/ 0.0jt DIPA</span>
+</div>
+</div>
+<!-- Progress Bar Realisasi Anggaran -->
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-5 overflow-hidden">
+<div class="bg-amber-400 h-full w-0" title="0.00%"></div>
+</div>
+</div>
+<!-- Card 4: Persentase Laporan Tepat Waktu -->
+<div class="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between relative overflow-hidden group hover:shadow-xl transition-shadow">
+<div>
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+<!-- Clock Timer Icon -->
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<span class="text-[11px] font-bold tracking-wider text-slate-500 uppercase leading-snug">
+              PERSENTASE LAPORAN TEPAT WAKTU
+            </span>
+</div>
+<div class="mt-4 flex items-baseline gap-2">
+<span class="text-3xl lg:text-4xl font-extrabold text-orange-600 tracking-tight">100,00%</span>
+</div>
+<div class="mt-1 flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
+<svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+<path clip-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill-rule="evenodd"></path>
+</svg>
+<span class="">Sesuai Jadwal</span>
+</div>
+</div>
+<!-- Orange Full Progress Bar -->
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-5 overflow-hidden">
+<div class="bg-orange-600 h-full w-full rounded-full" title="100.00%"></div>
+</div>
+</div>
+</section>
+<!-- END: TopKpiCards -->
+<!-- BEGIN: MiniMetricRow -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" data-purpose="mini-metrics">
+<!-- Mini Metric 1: Indikator -->
+<div class="bg-emerald-900/35 border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 backdrop-blur-sm shadow-sm">
+<div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="7" stroke-width="2"></circle>
+<circle cx="12" cy="12" r="2" stroke-width="2"></circle>
+</svg>
+</div>
+<div>
+<div class="text-[10px] uppercase tracking-wider font-bold text-emerald-200/90">INDIKATOR</div>
+<div class="text-lg font-bold text-white leading-none mt-0.5">0</div>
+</div>
+</div>
+<!-- Mini Metric 2: Seksi/Satker -->
+<div class="bg-emerald-900/35 border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 backdrop-blur-sm shadow-sm">
+<div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div>
+<div class="text-[10px] uppercase tracking-wider font-bold text-emerald-200/90">SEKSI/SATKER</div>
+<div class="text-lg font-bold text-white leading-none mt-0.5">0</div>
+</div>
+</div>
+<!-- Mini Metric 3: Pegawai -->
+<div class="bg-emerald-900/35 border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 backdrop-blur-sm shadow-sm">
+<div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div>
+<div class="text-[10px] uppercase tracking-wider font-bold text-emerald-200/90">PEGAWAI</div>
+<div class="text-lg font-bold text-white leading-none mt-0.5">0</div>
+</div>
+</div>
+<!-- Mini Metric 4: Lap. Disetujui -->
+<div class="bg-emerald-900/35 border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 backdrop-blur-sm shadow-sm">
+<div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div>
+<div class="text-[10px] uppercase tracking-wider font-bold text-emerald-200/90">LAP. DISETUJUI</div>
+<div class="text-lg font-bold text-white leading-none mt-0.5">0</div>
+</div>
+</div>
+</section>
+<!-- END: MiniMetricRow -->
+<!-- BEGIN: ChartCardSection -->
+<section class="bg-white rounded-2xl p-6 shadow-xl border border-slate-100 mb-6" data-purpose="performance-chart-card">
+<!-- Card Header -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+<div>
+<h2 class="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-700">
+            GRAFIK CAPAIAN KINERJA PER SEKSI/SATKER
+          </h2>
+<p class="text-xs text-slate-400 mt-0.5 font-normal">Pemantauan distribusi progres komparatif unit kerja periode berjalan</p>
+</div>
+<div class="flex items-center gap-2">
+<!-- Filter/Toggle Sample Data Mode -->
+<button class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium transition" onclick="toggleChartDataView()" type="button">
+            Lihat Simulasi Data
+          </button>
+<!-- Status Pill: Organisasi Kurang -->
+<span class="inline-flex items-center px-3 py-1 rounded-md text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 tracking-wide uppercase">
+            ORGANISASI: KURANG
+          </span>
+</div>
+</div>
+<!-- Chart Content Area -->
+<div class="py-12 px-4 flex flex-col items-center justify-center min-h-[220px]" id="chartContainer">
+<!-- Default State: Empty Notification as per screenshot -->
+<div class="text-center py-6" id="chartEmptyState">
+<svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+</svg>
+<p class="text-sm font-medium text-slate-500">
+            Belum ada data capaian untuk ditampilkan.
+          </p>
+<p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            Input laporan kinerja triwulanan atau klik tombol <strong class="text-slate-600 font-semibold">"Lihat Simulasi Data"</strong> di atas untuk memvisualisasikan data.
+          </p>
+</div>
+<!-- Simulated Bar Chart (Toggled on click) -->
+<div class="w-full hidden space-y-4" id="chartDataState">
+<!-- 100% Capping Marker Line Header -->
+<div class="relative w-full border-b border-dashed border-emerald-500 pb-1 flex justify-between text-[11px] text-emerald-800 font-semibold">
+<span class="">Ambang Standar (100%)</span>
+<span class="bg-emerald-50 px-2 py-0.5 rounded text-emerald-700">Capping Limit: 120%</span>
+</div>
+<!-- Seksi Item 1 -->
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-semibold text-slate-700">
+<span class="">Seksi Pendidikan Madrasah (Penma)</span>
+<span class="text-emerald-700 font-bold">102.50% (Capped)</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-3.5 relative overflow-hidden">
+<div class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: 85%;"></div>
+</div>
+</div>
+<!-- Seksi Item 2 -->
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-semibold text-slate-700">
+<span class="">Seksi Bimas Islam</span>
+<span class="text-blue-700 font-bold">94.80%</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-3.5 relative overflow-hidden">
+<div class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: 78%;"></div>
+</div>
+</div>
+<!-- Seksi Item 3 -->
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-semibold text-slate-700">
+<span class="">Seksi Penyelenggaraan Haji &amp; Umrah (PHU)</span>
+<span class="text-amber-600 font-bold">88.15%</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-3.5 relative overflow-hidden">
+<div class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 72%;"></div>
+</div>
+</div>
+<!-- Seksi Item 4 -->
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-semibold text-slate-700">
+<span class="">Subbagian Tata Usaha (Subbag TU)</span>
+<span class="text-emerald-600 font-bold">96.40%</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-3.5 relative overflow-hidden">
+<div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 80%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Chart Sub-Footer Info -->
+<div class="border-t border-slate-100 pt-3 mt-2">
+<p class="text-[11px] text-slate-400 font-medium">
+          Garis putus-putus menandai ambang 100% (Standar Capping System 0%–120%)
+        </p>
+</div>
+</section>
+<!-- END: ChartCardSection -->
+<!-- BEGIN: RankingLeaderboardSection -->
+<section class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden" data-purpose="ranking-leaderboard">
+<!-- Navigation Tabs -->
+<div class="border-b border-slate-200 bg-slate-50/70">
+<div class="flex flex-wrap sm:flex-nowrap">
+<!-- Tab 1: Peringkat Seksi -->
+<button class="flex-1 py-3.5 px-6 text-center text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-150 border-b-2 bg-emerald-50/80 text-emerald-800 border-emerald-700" id="tabBtn-seksi" onclick="switchTab('seksi')" type="button">
+            PERINGKAT SEKSI
+          </button>
+<!-- Tab 2: Peringkat IKSK -->
+<button class="flex-1 py-3.5 px-6 text-center text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-all duration-150 border-b-2 border-transparent" id="tabBtn-iksk" onclick="switchTab('iksk')" type="button">
+            PERINGKAT IKSK
+          </button>
+<!-- Tab 3: Peringkat Pegawai -->
+<button class="flex-1 py-3.5 px-6 text-center text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-all duration-150 border-b-2 border-transparent" id="tabBtn-pegawai" onclick="switchTab('pegawai')" type="button">
+            PERINGKAT PEGAWAI
+          </button>
+</div>
+</div>
+<!-- Tab Content: Seksi -->
+<div class="p-6" id="tabContent-seksi">
+<div class="text-center py-10" id="seksiEmptyState">
+<p class="text-sm font-medium text-slate-500">
+            Belum ada data untuk periode ini.
+          </p>
+<p class="text-xs text-slate-400 mt-1">Data pemeringkatan seksi akan dikalkulasi otomatis dari rekapitulasi capaian staf.</p>
+</div>
+<!-- Populated Table Template (Hidden initially, toggled by preview button) -->
+<div class="hidden overflow-x-auto" id="seksiTableState">
+<table class="w-full text-left border-collapse text-xs sm:text-sm">
+<thead>
+<tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+<th class="py-3 px-4 w-16 text-center">RANK</th>
+<th class="py-3 px-4">NAMA SEKSI / SATKER</th>
+<th class="py-3 px-4 text-center">TOTAL TARGET</th>
+<th class="py-3 px-4 text-center">CAPAIAN</th>
+<th class="py-3 px-4 text-center">PREDIKAT</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
+<tr class="hover:bg-slate-50/80">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs">1</span>
+</td>
+<td class="py-3.5 px-4 font-bold text-slate-900">Seksi Pendidikan Madrasah</td>
+<td class="py-3.5 px-4 text-center">48 Indikator</td>
+<td class="py-3.5 px-4 text-center font-bold text-emerald-700">102,50%</td>
+<td class="py-3.5 px-4 text-center">
+<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">Sangat Baik</span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50/80">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-extrabold text-xs">2</span>
+</td>
+<td class="py-3.5 px-4 font-bold text-slate-900">Subbagian Tata Usaha</td>
+<td class="py-3.5 px-4 text-center">32 Indikator</td>
+<td class="py-3.5 px-4 text-center font-bold text-emerald-700">96,40%</td>
+<td class="py-3.5 px-4 text-center">
+<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">Baik</span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50/80">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-900 font-extrabold text-xs">3</span>
+</td>
+<td class="py-3.5 px-4 font-bold text-slate-900">Seksi Bimas Islam</td>
+<td class="py-3.5 px-4 text-center">26 Indikator</td>
+<td class="py-3.5 px-4 text-center font-bold text-blue-700">94,80%</td>
+<td class="py-3.5 px-4 text-center">
+<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Baik</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Tab Content: IKSK -->
+<div class="p-6 hidden" id="tabContent-iksk">
+<div class="text-center py-10">
+<p class="text-sm font-medium text-slate-500">
+            Belum ada data Indikator Kinerja Sasaran Kegiatan (IKSK).
+          </p>
+<p class="text-xs text-slate-400 mt-1">Data IKSK disinkronisasi melalui Renstra dan Perjanjian Kinerja tahun berjalan.</p>
+</div>
+</div>
+<!-- Tab Content: Pegawai -->
+<div class="p-6 hidden" id="tabContent-pegawai">
+<div class="text-center py-10">
+<p class="text-sm font-medium text-slate-500">
+            Belum ada rekapitulasi capaian individu pegawai.
+          </p>
+<p class="text-xs text-slate-400 mt-1">Hasil evaluasi SKP triwulan I tahun 2026 akan diumumkan serentak.</p>
+</div>
+</div>
+</section>
+<!-- END: RankingLeaderboardSection -->
+<!-- BEGIN: FooterNote -->
+<footer class="mt-8 text-center text-xs text-emerald-200/80" data-purpose="site-footer">
+<p class="">© 2026 Portal Akuntabilitas Kinerja Berjenjang Terbuka. Dioptimalkan sesuai KMA Nomor 1807 Tahun 2025.</p>
+</footer>
+<!-- END: FooterNote -->
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: ModalLogin -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden" data-purpose="login-modal" id="loginModal">
+<div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all">
+<!-- Modal Header -->
+<div class="bg-emeraldPortal-800 p-6 text-white relative">
+<button class="absolute top-4 right-4 text-emerald-200 hover:text-white p-1" onclick="closeLoginModal()" type="button">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<span class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-700/60 text-[10px] font-bold uppercase tracking-wider text-emerald-200 mb-2 border border-emerald-500/30">
+          Akses Terbatas
+        </span>
+<h3 class="text-xl font-bold" id="modalTitle">Masuk ke Sistem Kinerja</h3>
+<p class="text-xs text-emerald-200/90 mt-1">Gunakan akun NIP &amp; sandi resmi Kementerian Agama</p>
+</div>
+<!-- Modal Body -->
+<form class="p-6 space-y-4" onsubmit="event.preventDefault(); alert('Verifikasi otentikasi diproses.'); closeLoginModal();">
+<div>
+<label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Peran / Role Pengguna</label>
+<select class="w-full text-sm rounded-xl border-slate-300 focus:border-emerald-600 focus:ring-emerald-600 bg-slate-50 py-2.5">
+<option>Pegawai / Pengisi Laporan</option>
+<option>Kepala Seksi / Pejabat Penilai</option>
+<option>Admin Organisasi / Perencana</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">NIP (Nomor Induk Pegawai)</label>
+<input class="w-full text-sm rounded-xl border-slate-300 focus:border-emerald-600 focus:ring-emerald-600 bg-slate-50 py-2.5" placeholder="19XXXXXXXXXXXXXX" required="" type="text">
+</div>
+<div>
+<div class="flex justify-between items-center mb-1.5">
+<label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Kata Sandi</label>
+<a class="text-xs text-emerald-700 hover:underline" href="#">Lupa sandi?</a>
+</div>
+<input class="w-full text-sm rounded-xl border-slate-300 focus:border-emerald-600 focus:ring-emerald-600 bg-slate-50 py-2.5" placeholder="••••••••" required="" type="password">
+</div>
+<button class="w-full mt-2 py-3 rounded-xl bg-emeraldPortal-800 hover:bg-emerald-900 text-white font-bold text-sm shadow-md shadow-emerald-950/20 transition-all" type="submit">
+          Masuk ke Dashboard
+        </button>
+</form>
+</div>
+</div>
+<!-- END: ModalLogin -->
+<!-- Interactive Client Script -->
+<script data-purpose="tab-and-modal-handler">
+    // Switch Leaderboard Tabs
+    function switchTab(tabId) {
+      const tabs = ['seksi', 'iksk', 'pegawai'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tabBtn-${t}`);
+        const content = document.getElementById(`tabContent-${t}`);
+        if (t === tabId) {
+          btn.className = "flex-1 py-3.5 px-6 text-center text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-150 border-b-2 bg-emerald-50/80 text-emerald-800 border-emerald-700";
+          content.classList.remove('hidden');
+        } else {
+          btn.className = "flex-1 py-3.5 px-6 text-center text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-all duration-150 border-b-2 border-transparent";
+          content.classList.add('hidden');
+        }
+      });
+    }
+
+    // Modal Login Handlers
+    function openLoginModal(actionName) {
+      const modal = document.getElementById('loginModal');
+      const title = document.getElementById('modalTitle');
+      if (title && actionName) {
+        title.innerText = actionName === 'Otentikasi' ? 'Masuk ke Portal Kinerja' : `Akses: ${actionName}`;
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+    }
+
+    // Toggle Simulation Data for Demo
+    let isDemoActive = false;
+    function toggleChartDataView() {
+      const emptyState = document.getElementById('chartEmptyState');
+      const dataState = document.getElementById('chartDataState');
+      const seksiEmpty = document.getElementById('seksiEmptyState');
+      const seksiTable = document.getElementById('seksiTableState');
+
+      isDemoActive = !isDemoActive;
+
+      if (isDemoActive) {
+        emptyState.classList.add('hidden');
+        dataState.classList.remove('hidden');
+        seksiEmpty.classList.add('hidden');
+        seksiTable.classList.remove('hidden');
+      } else {
+        emptyState.classList.remove('hidden');
+        dataState.classList.add('hidden');
+        seksiEmpty.classList.remove('hidden');
+        seksiTable.classList.add('hidden');
+      }
+    }
+  </script>
+
+
+</body></html>
