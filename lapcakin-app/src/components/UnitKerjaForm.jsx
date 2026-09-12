@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 const initialForm = {
   namaUnit: '',
@@ -23,64 +24,78 @@ const jenisUnitOptions = ['Seksi', 'Subbagian', 'Bagian', 'Bidang', 'Satuan Kerj
 
 const statusOptions = ['Aktif', 'Nonaktif', 'Dalam Verifikasi']
 
-const seededUnits = [
-  {
-    id: 1,
-    namaUnit: 'Seksi Pendidikan Madrasah',
-    kodeUnit: 'SEKS-PENDIS-01',
-    jenisUnit: 'Seksi',
-    indukOrganisasi: 'Kantor Kementerian Agama Kabupaten Lebak',
-    kepalaUnit: 'Dr. Ahmad Baswedan, M.Pd.',
-    nipKepalaUnit: '196701011990031001',
-    email: 'pendis@kemenag.go.id',
-    telepon: '021-5299011',
-    alamat: 'Jl. M.H. Thamrin No. 1, Jakarta',
-    status: 'Aktif',
-    catatan: 'Unit kerja seksi pembinaan madrasah',
-  },
-  {
-    id: 2,
-    namaUnit: 'Subbagian Tata Usaha',
-    kodeUnit: 'SUBBAG-TU-01',
-    jenisUnit: 'Subbagian',
-    indukOrganisasi: 'Kantor Kementerian Agama Kabupaten Lebak',
-    kepalaUnit: 'Rizki Pratama, S.E.',
-    nipKepalaUnit: '198505102010011002',
-    email: 'tu@kemenag.go.id',
-    telepon: '021-5299012',
-    alamat: 'Jl. M.H. Thamrin No. 1, Jakarta',
-    status: 'Aktif',
-    catatan: '',
-  },
-  {
-    id: 3,
-    namaUnit: 'Seksi Bimbingan Masyarakat Islam',
-    kodeUnit: 'SEKS-BIMAS-01',
-    jenisUnit: 'Seksi',
-    indukOrganisasi: 'Kantor Kementerian Agama Kabupaten Lebak',
-    kepalaUnit: 'H. Muhammad Saleh, M.Ag.',
-    nipKepalaUnit: '197203152000031003',
-    email: 'bimas@kemenag.go.id',
-    telepon: '021-5299013',
-    alamat: 'Jl. M.H. Thamrin No. 1, Jakarta',
-    status: 'Dalam Verifikasi',
-    catatan: '',
-  },
-]
-
 const requiredFields = ['namaUnit', 'kodeUnit', 'jenisUnit', 'indukOrganisasi', 'kepalaUnit']
 
+// Mapping snake_case (Supabase) <-> camelCase (form/UI)
+const fromRow = (row) => ({
+  id: row.id,
+  namaUnit: row.nama_unit ?? '',
+  kodeUnit: row.kode_unit ?? '',
+  jenisUnit: row.jenis_unit ?? 'Seksi',
+  indukOrganisasi: row.induk_organisasi ?? '',
+  kepalaUnit: row.kepala_unit ?? '',
+  nipKepalaUnit: row.nip_kepala_unit ?? '',
+  email: row.email ?? '',
+  telepon: row.telepon ?? '',
+  alamat: row.alamat ?? '',
+  status: row.status ?? 'Aktif',
+  catatan: row.catatan ?? '',
+})
+
+const toRow = (form) => ({
+  nama_unit: form.namaUnit.trim(),
+  kode_unit: form.kodeUnit.trim(),
+  jenis_unit: form.jenisUnit,
+  induk_organisasi: form.indukOrganisasi,
+  kepala_unit: form.kepalaUnit.trim(),
+  nip_kepala_unit: form.nipKepalaUnit.trim() || null,
+  email: form.email.trim() || null,
+  telepon: form.telepon.trim() || null,
+  alamat: form.alamat.trim() || null,
+  status: form.status,
+  catatan: form.catatan.trim() || null,
+})
+
 function UnitKerjaForm() {
-  const [units, setUnits] = useState(seededUnits)
+  const [units, setUnits] = useState([])
   const [form, setForm] = useState(initialForm)
   const [editingId, setEditingId] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errors, setErrors] = useState({})
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [fetchError, setFetchError] = useState('')
   const formRef = useRef(null)
 
   const isEditing = editingId !== null
+
+  // ---- READ ----
+  const fetchUnits = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setFetchError('Konfigurasi Supabase belum ditemukan. Isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di file .env.')
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setFetchError('')
+    const { data, error } = await supabase
+      .from('unit_kerja')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) {
+      setFetchError(`Gagal memuat data: ${error.message}`)
+    } else {
+      setUnits((data ?? []).map(fromRow))
+    }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchUnits()
+  }, [fetchUnits])
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -111,51 +126,62 @@ function UnitKerjaForm() {
         nextErrors[field] = 'Kolom ini wajib diisi.'
       }
     })
-    // Kode unit harus unik
-    const duplicate = units.find(
-      (unit) =>
-        unit.kodeUnit.trim().toLowerCase() === form.kodeUnit.trim().toLowerCase() &&
-        unit.id !== editingId,
-    )
-    if (!nextErrors.kodeUnit && duplicate) {
-      nextErrors.kodeUnit = 'Kode Unit sudah digunakan. Gunakan kode yang unik.'
-    }
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
 
-  // Create + Update
-  const handleSubmit = (event) => {
+  // ---- CREATE + UPDATE ----
+  const handleSubmit = async (event) => {
     event.preventDefault()
+    if (saving) return
     if (!validate()) return
-
-    const payload = {
-      namaUnit: form.namaUnit.trim(),
-      kodeUnit: form.kodeUnit.trim(),
-      jenisUnit: form.jenisUnit,
-      indukOrganisasi: form.indukOrganisasi,
-      kepalaUnit: form.kepalaUnit.trim(),
-      nipKepalaUnit: form.nipKepalaUnit.trim(),
-      email: form.email.trim(),
-      telepon: form.telepon.trim(),
-      alamat: form.alamat.trim(),
-      status: form.status,
-      catatan: form.catatan.trim(),
+    if (!isSupabaseConfigured) {
+      setFetchError('Konfigurasi Supabase belum ditemukan. Isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di file .env.')
+      return
     }
 
-    if (isEditing) {
-      setUnits((current) =>
-        current.map((unit) => (unit.id === editingId ? { ...payload, id: editingId } : unit)),
-      )
-      setSuccessMessage(`Unit kerja ${payload.namaUnit} telah diperbarui di master data.`)
-    } else {
-      setUnits((current) => [{ ...payload, id: Date.now() }, ...current])
-      setSuccessMessage(`Unit kerja ${payload.namaUnit} telah ditambahkan ke master data.`)
-    }
+    setSaving(true)
+    const payload = toRow(form)
 
-    setForm(initialForm)
-    setEditingId(null)
-    setErrors({})
+    try {
+      if (isEditing) {
+        const { data, error } = await supabase
+          .from('unit_kerja')
+          .update(payload)
+          .eq('id', editingId)
+          .select()
+          .single()
+        if (error) throw error
+        const updated = fromRow(data)
+        setUnits((current) => current.map((unit) => (unit.id === editingId ? updated : unit)))
+        setSuccessMessage(`Unit kerja ${updated.namaUnit} telah diperbarui di master data.`)
+      } else {
+        const { data, error } = await supabase
+          .from('unit_kerja')
+          .insert(payload)
+          .select()
+          .single()
+        if (error) throw error
+        const created = fromRow(data)
+        setUnits((current) => [created, ...current])
+        setSuccessMessage(`Unit kerja ${created.namaUnit} telah ditambahkan ke master data.`)
+      }
+      setForm(initialForm)
+      setEditingId(null)
+      setErrors({})
+    } catch (error) {
+      // Unique violation kode_unit (Postgres 23505)
+      if (error?.code === '23505') {
+        setErrors((current) => ({
+          ...current,
+          kodeUnit: 'Kode Unit sudah digunakan. Gunakan kode yang unik.',
+        }))
+      } else {
+        setFetchError(`Gagal menyimpan data: ${error.message}`)
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Update: pre-fill formulir dari baris yang dipilih
@@ -176,6 +202,7 @@ function UnitKerjaForm() {
     })
     setErrors({})
     setSuccessMessage('')
+    setFetchError('')
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 50)
@@ -195,9 +222,16 @@ function UnitKerjaForm() {
     if (isEditing) setEditingId(null)
   }
 
-  // Delete
-  const handleDeleteConfirm = () => {
-    if (!deleteTarget) return
+  // ---- DELETE ----
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget || deleting) return
+    setDeleting(true)
+    const { error } = await supabase.from('unit_kerja').delete().eq('id', deleteTarget.id)
+    setDeleting(false)
+    if (error) {
+      setFetchError(`Gagal menghapus data: ${error.message}`)
+      return
+    }
     setUnits((current) => current.filter((unit) => unit.id !== deleteTarget.id))
     setSuccessMessage(`Unit kerja ${deleteTarget.namaUnit} telah dihapus dari master data.`)
     if (editingId === deleteTarget.id) {
@@ -251,6 +285,24 @@ function UnitKerjaForm() {
             : 'Lengkapi informasi unit kerja baru untuk mendaftarkan seksi, subbagian, atau satuan kerja ke dalam sistem SICAKIN.'}
         </p>
       </div>
+
+      {fetchError && (
+        <div className="mb-space-lg flex items-start gap-space-sm rounded-xl border border-error bg-error-container/40 p-space-md text-error">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <div className="flex-1">
+            <h3 className="font-title-sm text-title-sm font-bold">Terjadi kesalahan</h3>
+            <p className="font-body-sm text-body-sm">{fetchError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={fetchUnits}
+            className="inline-flex items-center gap-space-2xs rounded-lg border border-error/30 px-space-sm py-space-2xs font-body-sm text-body-sm font-bold hover:bg-error-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">refresh</span>
+            Muat ulang
+          </button>
+        </div>
+      )}
 
       {successMessage && (
         <div className="mb-space-lg flex items-start gap-space-sm rounded-xl border border-primary-fixed bg-primary-fixed/20 p-space-md text-primary">
@@ -468,7 +520,8 @@ function UnitKerjaForm() {
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant bg-surface-container-lowest px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors"
+                disabled={saving}
+                className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant bg-surface-container-lowest px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
                 Batal Edit
@@ -477,19 +530,21 @@ function UnitKerjaForm() {
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant bg-surface-container-lowest px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors"
+              disabled={saving}
+              className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant bg-surface-container-lowest px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">refresh</span>
               Reset Form
             </button>
             <button
               type="submit"
-              className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-primary px-space-md font-body-md text-body-md font-bold text-on-primary shadow-sm hover:bg-primary-container transition-colors"
+              disabled={saving}
+              className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-primary px-space-md font-body-md text-body-md font-bold text-on-primary shadow-sm hover:bg-primary-container transition-colors disabled:opacity-60"
             >
               <span className="material-symbols-outlined text-[18px]">
-                {isEditing ? 'save' : 'add'}
+                {saving ? 'progress_activity' : isEditing ? 'save' : 'add'}
               </span>
-              {isEditing ? 'Perbarui Data' : 'Simpan Unit Kerja'}
+              {saving ? 'Menyimpan...' : isEditing ? 'Perbarui Data' : 'Simpan Unit Kerja'}
             </button>
           </div>
         </form>
@@ -503,7 +558,7 @@ function UnitKerjaForm() {
               Tabel Daftar Unit Kerja
             </h2>
             <p className="font-body-sm text-body-sm text-secondary">
-              {filteredUnits.length} data unit kerja terdaftar
+              {loading ? 'Memuat data...' : `${filteredUnits.length} data unit kerja terdaftar`}
             </p>
           </div>
           <div className="relative w-full sm:w-80">
@@ -553,7 +608,16 @@ function UnitKerjaForm() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUnits.length > 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="px-space-md py-space-xl text-center font-body-sm text-body-sm text-secondary">
+                      <span className="flex items-center justify-center gap-space-2xs">
+                        <span className="material-symbols-outlined text-[24px] animate-spin">progress_activity</span>
+                        Memuat data dari Supabase...
+                      </span>
+                    </td>
+                  </tr>
+                ) : filteredUnits.length > 0 ? (
                   filteredUnits.map((unit, idx) => (
                     <tr
                       key={unit.id}
@@ -629,7 +693,7 @@ function UnitKerjaForm() {
       {deleteTarget && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-space-md"
-          onClick={() => setDeleteTarget(null)}
+          onClick={() => !deleting && setDeleteTarget(null)}
           role="presentation"
         >
           <div
@@ -656,17 +720,19 @@ function UnitKerjaForm() {
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant bg-surface-container-lowest px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors"
+                disabled={deleting}
+                className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant bg-surface-container-lowest px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleDeleteConfirm}
-                className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-error px-space-md font-body-md text-body-md font-bold text-on-error shadow-sm hover:opacity-90 transition-opacity"
+                disabled={deleting}
+                className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-error px-space-md font-body-md text-body-md font-bold text-on-error shadow-sm hover:opacity-90 transition-opacity disabled:opacity-60"
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
-                Hapus
+                {deleting ? 'Menghapus...' : 'Hapus'}
               </button>
             </div>
           </div>
