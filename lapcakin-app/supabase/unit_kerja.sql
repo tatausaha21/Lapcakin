@@ -4,6 +4,10 @@
 -- paste seluruh file ini > Run
 -- ============================================================
 
+-- 0) Ekstensi wajib untuk index pencarian trigram.
+-- Harus dijalankan SEBELUM create index ... gin_trgm_ops.
+create extension if not exists pg_trgm;
+
 -- 1) Tabel utama
 create table if not exists public.unit_kerja (
   id uuid primary key default gen_random_uuid(),
@@ -25,14 +29,11 @@ create table if not exists public.unit_kerja (
 );
 
 -- 2) Index untuk pencarian Kode / Nama (dipakai search bar)
+-- idx kode untuk lookup exact, idx trigram untuk pencarian LIKE/ILIKE yang cepat.
 create index if not exists idx_unit_kerja_kode
   on public.unit_kerja (kode_unit);
 create index if not exists idx_unit_kerja_nama_trgm
   on public.unit_kerja using gin (nama_unit gin_trgm_ops);
-
--- Catatan: ekstensi pg_trgm perlu aktif untuk index di atas.
--- Jika error, jalankan dulu: create extension if not exists pg_trgm;
--- Atau hapus blok index kedua bila tidak butuh full-text search.
 
 -- 3) Trigger auto-update kolom updated_at
 create or replace function public.handle_updated_at()
