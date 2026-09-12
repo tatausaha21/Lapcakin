@@ -14,10 +14,10 @@ function App() {
   return (
     <div className="bg-background font-body-md text-body-md text-on-surface min-h-screen antialiased">
       <Sidebar activePage={activePage} onNavigate={setActivePage} />
-      <div className="pl-[280px]">
+      <div className="pl-0 lg:pl-[280px]">
         <Header />
-        <main className="relative pt-16 min-h-screen bg-surface w-full px-container-padding-desktop py-space-xl">
-          <div className="mx-auto w-full max-w-[1600px]">
+        <main className="relative pt-0 lg:pt-16 min-h-screen bg-surface w-full px-container-padding-mobile lg:px-container-padding-desktop py-space-xl">
+          <div className="mx-auto w-full max-w-[1720px]">
             {activePage === 'unit-kerja' ? (
               <UnitKerjaForm />
             ) : (
@@ -44,21 +44,21 @@ function App() {
 
               {/* Quick Export Bar */}
               <div className="flex flex-wrap items-center gap-space-xs bg-surface-container-lowest p-space-2xs rounded-xl shadow-sm">
-                <button className="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface font-title-sm text-[13px] font-semibold transition-colors" onClick={() => window.print()}>
+                <button className="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface font-body-sm text-body-sm font-semibold transition-colors" onClick={() => window.print()}>
                   <span className="material-symbols-outlined text-[18px]">print</span>
                   <span>Cetak Laporan</span>
                 </button>
                 <div className="w-px h-5 bg-outline-variant/30"></div>
-                <button className="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-error hover:bg-error-container hover:text-on-error-container font-title-sm text-[13px] font-semibold transition-colors">
+                <button className="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-error hover:bg-error-container hover:text-on-error-container font-body-sm text-body-sm font-semibold transition-colors">
                   <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
                   <span>Unduh PDF</span>
                 </button>
-                <button className="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-primary hover:bg-primary-fixed hover:text-on-primary-fixed font-title-sm text-[13px] font-semibold transition-colors">
+                <button className="flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-low text-primary hover:bg-primary-fixed hover:text-on-primary-fixed font-body-sm text-body-sm font-semibold transition-colors">
                   <span className="material-symbols-outlined text-[18px]">table_view</span>
                   <span>Unduh Excel</span>
                 </button>
                 <div className="w-px h-5 bg-outline-variant/30"></div>
-                <button className="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-primary text-on-primary hover:bg-primary-container font-title-sm text-[13px] font-bold shadow-sm transition-all">
+                <button className="flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-primary text-on-primary hover:bg-primary-container font-body-sm text-body-sm font-bold shadow-sm transition-all">
                   <span className="material-symbols-outlined text-[18px]">fact_check</span>
                   <span>Approval Massal</span>
                 </button>
@@ -71,7 +71,7 @@ function App() {
                 <div className="md:col-span-3">
                   <label className="block font-label-sm text-secondary uppercase font-bold mb-space-2xs">Tahun Anggaran</label>
                   <div className="relative">
-                    <select className="w-full h-[38px] pl-space-sm pr-space-lg rounded-lg bg-surface-container-low text-on-surface font-title-sm text-[13px] appearance-none focus:outline-none focus:bg-surface-container">
+                    <select className="w-full h-[38px] pl-space-sm pr-space-lg rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm appearance-none focus:outline-none focus:bg-surface-container">
                       <option value="2026">2026 (Tahun Berjalan Aktif)</option>
                       <option value="2025">2025 (Arsip Audited)</option>
                       <option value="2024">2024 (Arsip)</option>
@@ -82,7 +82,7 @@ function App() {
                 <div className="md:col-span-3">
                   <label className="block font-label-sm text-secondary uppercase font-bold mb-space-2xs">Periode Evaluasi</label>
                   <div className="relative">
-                    <select className="w-full h-[38px] pl-space-sm pr-space-lg rounded-lg bg-surface-container-low text-on-surface font-title-sm text-[13px] appearance-none focus:outline-none focus:bg-surface-container">
+                    <select className="w-full h-[38px] pl-space-sm pr-space-lg rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm appearance-none focus:outline-none focus:bg-surface-container">
                       <option value="TW1">Triwulan I (Januari - Maret)</option>
                       <option value="TW2">Triwulan II (April - Juni)</option>
                       <option value="TW3">Triwulan III (Juli - September)</option>
@@ -95,7 +95,7 @@ function App() {
                 <div className="md:col-span-4">
                   <label className="block font-label-sm text-secondary uppercase font-bold mb-space-2xs">Unit Kerja / Satuan Kerja</label>
                   <div className="relative">
-                    <select className="w-full h-[38px] pl-space-sm pr-space-lg rounded-lg bg-surface-container-low text-on-surface font-title-sm text-[13px] appearance-none focus:outline-none focus:bg-surface-container">
+                    <select className="w-full h-[38px] pl-space-sm pr-space-lg rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm appearance-none focus:outline-none focus:bg-surface-container">
                       <option value="all">Semua Unit & Seksi Lingkup Kemenag</option>
                       <option value="madrasah">Seksi Pendidikan Madrasah (Pendis)</option>
                       <option value="bimas">Seksi Bimbingan Masyarakat Islam</option>
@@ -107,7 +107,7 @@ function App() {
                   </div>
                 </div>
                 <div className="md:col-span-2 flex items-end">
-                  <button className="w-full h-[38px] rounded-lg bg-primary-container text-on-primary-container font-title-sm text-[13px] font-bold flex items-center justify-center gap-space-2xs hover:opacity-90 transition-opacity">
+                  <button className="w-full h-[38px] rounded-lg bg-primary-container text-on-primary-container font-body-sm text-body-sm font-bold flex items-center justify-center gap-space-2xs hover:opacity-90 transition-opacity">
                     <span className="material-symbols-outlined text-[18px]">sync</span>
                     <span>Terapkan</span>
                   </button>

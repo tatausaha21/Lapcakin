@@ -30,7 +30,7 @@ function CascadingActions() {
           <a key={index} href="#" className="flex items-center justify-between p-space-sm rounded-xl bg-on-primary/10 hover:bg-on-primary/20 transition-colors">
             <div className="flex items-center gap-space-xs">
               <span className={`material-symbols-outlined text-[18px] ${action.iconColor}`}>{action.icon}</span>
-              <span className="font-title-sm text-[13px] font-bold">{action.label}</span>
+              <span className="font-body-sm text-body-sm font-bold">{action.label}</span>
             </div>
             {action.badge ? (
               <span className={`px-space-xs py-0.5 rounded font-label-sm font-bold ${action.badge.color}`}>

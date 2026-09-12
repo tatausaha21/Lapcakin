@@ -17,8 +17,8 @@ const bottomItems = [
 
 function Sidebar({ activePage, onNavigate }) {
   return (
-    <aside className="fixed left-0 top-0 h-full w-[280px] bg-primary text-on-primary z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.08)] overflow-hidden">
-      <div className="flex flex-col h-full">
+    <aside className="max-lg:relative max-lg:w-full max-lg:h-auto lg:fixed lg:left-0 lg:top-0 lg:h-full lg:w-[280px] bg-primary text-on-primary z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.08)] overflow-hidden">
+      <div className="flex flex-col h-auto lg:h-full">
         <div className="p-space-lg flex items-center gap-space-sm bg-primary">
           <div className="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-primary-fixed shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
             <span className="material-symbols-outlined text-[24px]">account_balance</span>

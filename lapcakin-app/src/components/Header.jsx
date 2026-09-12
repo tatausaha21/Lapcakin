@@ -1,7 +1,7 @@
 function Header() {
   return (
-    <header className="fixed top-0 left-[280px] right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-container-padding-desktop">
-      <div className="flex items-center gap-space-md">
+    <header className="max-lg:relative max-lg:left-auto max-lg:right-auto max-lg:h-auto lg:fixed lg:top-0 lg:left-[280px] lg:right-0 lg:h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex flex-wrap items-center justify-between gap-2 px-container-padding-mobile lg:px-container-padding-desktop py-3 lg:py-0">
+      <div className="flex min-w-0 flex-wrap items-center gap-space-md">
         <div className="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full bg-secondary-container text-on-secondary-fixed">
           <span className="material-symbols-outlined text-[16px] text-primary">event_available</span>
           <span className="font-label-md text-label-md font-semibold tracking-wide">Tahun Anggaran 2026 - Triwulan I</span>

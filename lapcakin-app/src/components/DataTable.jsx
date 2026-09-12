@@ -108,7 +108,7 @@ function DataTable() {
           <div className="relative">
             <input
               type="text"
-              className="h-9 pl-8 pr-space-sm rounded-lg bg-surface-container text-on-surface font-body-sm text-[13px] placeholder:text-secondary focus:outline-none focus:bg-surface-container-high w-48 transition-all focus:w-64"
+              className="h-9 pl-8 pr-space-sm rounded-lg bg-surface-container text-on-surface font-body-sm text-body-sm placeholder:text-secondary focus:outline-none focus:bg-surface-container-high w-48 transition-all focus:w-64"
               placeholder="Cari nama seksi / PIC..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -143,7 +143,7 @@ function DataTable() {
                 <td className="py-space-sm px-space-md font-bold text-secondary">{row.no}</td>
                 <td className="py-space-sm px-space-md">
                   <div className="flex flex-col">
-                    <span className="font-title-sm text-[14px] font-bold text-on-surface">{row.unit}</span>
+                    <span className="font-title-sm text-body-md font-bold text-on-surface">{row.unit}</span>
                     <span className="font-label-sm text-secondary">{row.code}</span>
                   </div>
                 </td>

@@ -44,7 +44,7 @@ function DocumentPanel() {
                 <span className="material-symbols-outlined text-[18px]">{doc.icon}</span>
               </div>
               <div className="flex flex-col">
-                <span className="font-title-sm text-[13px] font-bold text-on-surface">{doc.title}</span>
+                <span className="font-title-sm text-body-sm font-bold text-on-surface">{doc.title}</span>
                 <span className="font-label-sm text-secondary">{doc.subtitle}</span>
               </div>
             </div>
@@ -54,7 +54,7 @@ function DocumentPanel() {
           </div>
         ))}
       </div>
-      <button className="mt-space-md w-full py-space-xs px-space-sm rounded-lg bg-surface-container text-on-surface font-title-sm text-[13px] font-bold hover:bg-surface-container-high transition-colors flex items-center justify-center gap-space-xs" type="button">
+      <button className="mt-space-md w-full py-space-xs px-space-sm rounded-lg bg-surface-container text-on-surface font-title-sm text-body-sm font-bold hover:bg-surface-container-high transition-colors flex items-center justify-center gap-space-xs" type="button">
         <span className="material-symbols-outlined text-[18px]">upload_file</span>
         <span>Perbarui Berkas Induk</span>
       </button>

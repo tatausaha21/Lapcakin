@@ -41,7 +41,7 @@ function UnitKerjaForm() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-[1400px] mx-auto">
       <div className="flex flex-col gap-space-2xs mb-space-lg">
         <div className="flex items-center gap-space-xs text-secondary font-label-md">
           <span className="hover:text-primary transition-colors cursor-pointer">SICAKIN Kemenag</span>
