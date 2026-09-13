@@ -10,6 +10,7 @@ import UnitKerjaForm from './components/UnitKerjaForm'
 import MasterUserForm from './components/MasterUserForm'
 import PeriodeKinerjaForm from './components/PeriodeKinerjaForm'
 import PerkinForm from './components/PerkinForm'
+import CascadingForm from './components/CascadingForm'
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
@@ -29,6 +30,8 @@ function App() {
               <PeriodeKinerjaForm />
             ) : activePage === 'perkin' ? (
               <PerkinForm />
+            ) : activePage === 'cascading' ? (
+              <CascadingForm />
             ) : (
               <div className="flex flex-col w-full">
             {/* Breadcrumb & Page Command Hub */}
