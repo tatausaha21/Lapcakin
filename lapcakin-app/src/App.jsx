@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
-import LoginPage from './components/LoginPage'
+import PublicPortal from './components/PublicPortal'
 import { supabase } from './lib/supabase'
 import MetricCards from './components/MetricCards'
 import DataTable from './components/DataTable'
@@ -110,7 +110,7 @@ function App() {
   }
 
   if (!currentUser) {
-    return <LoginPage onLogin={setCurrentUser} />
+    return <PublicPortal onLogin={setCurrentUser} />
   }
 
   return (
