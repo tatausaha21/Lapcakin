@@ -9,6 +9,7 @@ import AuditLog from './components/AuditLog'
 import UnitKerjaForm from './components/UnitKerjaForm'
 import MasterUserForm from './components/MasterUserForm'
 import PeriodeKinerjaForm from './components/PeriodeKinerjaForm'
+import PerkinForm from './components/PerkinForm'
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
@@ -26,6 +27,8 @@ function App() {
               <MasterUserForm />
             ) : activePage === 'periode-kinerja' ? (
               <PeriodeKinerjaForm />
+            ) : activePage === 'perkin' ? (
+              <PerkinForm />
             ) : (
               <div className="flex flex-col w-full">
             {/* Breadcrumb & Page Command Hub */}
