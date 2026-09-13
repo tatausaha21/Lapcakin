@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
+import LoginPage from './components/LoginPage'
+import { supabase } from './lib/supabase'
 import MetricCards from './components/MetricCards'
 import DataTable from './components/DataTable'
 import DocumentPanel from './components/DocumentPanel'
@@ -12,14 +14,110 @@ import PeriodeKinerjaForm from './components/PeriodeKinerjaForm'
 import PerkinForm from './components/PerkinForm'
 import CascadingForm from './components/CascadingForm'
 
+function getDemoSession() {
+  try {
+    const raw = localStorage.getItem('sicakin_session')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    // Hanya sesi demo yang disimpan di localStorage (Supabase Auth
+    // mengelola sesinya sendiri). Abaikan jika bukan demo.
+    return parsed?.user?.isDemo ? parsed.user : null
+  } catch {
+    return null
+  }
+}
+
+function toProfile(row, authUserId) {
+  return {
+    id: authUserId ?? row.id,
+    namaLengkap: row.nama_lengkap ?? '',
+    nip: row.nip ?? '-',
+    username: row.username ?? '',
+    email: row.email ?? '',
+    jabatan: row.jabatan ?? '',
+    peran: row.peran ?? '',
+    unitKerjaNama: row.unit_kerja_nama ?? '',
+  }
+}
+
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
+  const [currentUser, setCurrentUser] = useState(null)
+  const [authChecked, setAuthChecked] = useState(false)
+
+  // Pulihkan sesi: Supabase Auth dulu, fallback ke sesi demo lokal.
+  useEffect(() => {
+    let cancelled = false
+    const restore = async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+        const authUser = data?.session?.user
+        if (authUser) {
+          const { data: profile } = await supabase
+            .from('master_users')
+            .select('*')
+            .eq('auth_user_id', authUser.id)
+            .maybeSingle()
+          if (!cancelled) {
+            if (profile && profile.status === 'Aktif') {
+              setCurrentUser(toProfile(profile, authUser.id))
+            } else {
+              await supabase.auth.signOut()
+              setCurrentUser(getDemoSession())
+            }
+            setAuthChecked(true)
+            return
+          }
+        } else if (!cancelled) {
+          setCurrentUser(getDemoSession())
+        }
+      } catch {
+        if (!cancelled) setCurrentUser(getDemoSession())
+      }
+      if (!cancelled) setAuthChecked(true)
+    }
+    restore()
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (cancelled) return
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        setCurrentUser((current) => (current?.isDemo ? current : null))
+        return
+      }
+    })
+    return () => {
+      cancelled = true
+      listener?.subscription?.unsubscribe()
+    }
+  }, [])
+
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem('sicakin_session')
+      await supabase.auth.signOut()
+    } catch {
+      // abaikan
+    }
+    setCurrentUser(null)
+    setActivePage('dashboard')
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#004D40]">
+        <p className="text-sm font-semibold text-emerald-100">Memuat sesi…</p>
+      </div>
+    )
+  }
+
+  if (!currentUser) {
+    return <LoginPage onLogin={setCurrentUser} />
+  }
 
   return (
     <div className="bg-background font-body-md text-body-md text-on-surface min-h-screen antialiased">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
+      <Sidebar activePage={activePage} onNavigate={setActivePage} currentUser={currentUser} onLogout={handleLogout} />
       <div className="pl-0 lg:pl-[280px]">
-        <Header />
+        <Header currentUser={currentUser} />
         <main className="relative pt-0 lg:pt-16 min-h-screen bg-surface w-full px-container-padding-mobile lg:px-container-padding-desktop py-space-xl">
           <div className="mx-auto w-full max-w-[1720px]">
             {activePage === 'unit-kerja' ? (

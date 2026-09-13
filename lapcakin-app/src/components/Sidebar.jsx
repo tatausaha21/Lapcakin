@@ -15,7 +15,7 @@ const bottomItems = [
   { icon: 'logout', label: 'Keluar', href: '#', path: 'login', danger: true },
 ]
 
-function Sidebar({ activePage, onNavigate }) {
+function Sidebar({ activePage, onNavigate, currentUser, onLogout }) {
   return (
     <aside className="max-lg:relative max-lg:w-full max-lg:h-auto lg:fixed lg:left-0 lg:top-0 lg:h-full lg:w-[280px] bg-primary text-on-primary z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.08)] overflow-hidden">
       <div className="flex flex-col h-auto lg:h-full">
@@ -34,8 +34,8 @@ function Sidebar({ activePage, onNavigate }) {
               <span className="font-label-sm text-label-sm text-primary-fixed-dim uppercase font-semibold tracking-wider">Peran Aktif</span>
               <span className="flex h-2 w-2 rounded-full bg-primary-fixed animate-pulse"></span>
             </div>
-            <span className="font-title-sm text-title-sm text-on-primary font-bold truncate">Admin Organisasi</span>
-            <span className="font-body-sm text-body-sm text-on-primary/70 truncate">Biro Ortala Kemenag RI</span>
+            <span className="font-title-sm text-title-sm text-on-primary font-bold truncate">{currentUser?.peran ?? 'Admin Organisasi'}</span>
+            <span className="font-body-sm text-body-sm text-on-primary/70 truncate">{currentUser?.unitKerjaNama ?? 'Biro Ortala Kemenag RI'}</span>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-space-md py-space-xs space-y-space-md">
@@ -65,21 +65,33 @@ function Sidebar({ activePage, onNavigate }) {
           </nav>
         </div>
         <div className="p-space-md space-y-space-xs bg-primary">
-          {bottomItems.map((item, index) => (
-            <a
-              key={index}
-              href={item.href}
-              data-path={item.path}
-              className={`flex items-center gap-space-sm px-space-sm py-space-xs rounded-lg transition-colors ${
-                item.danger
-                  ? 'text-on-primary/80 hover:bg-error-container hover:text-on-error-container'
-                  : 'text-on-primary/80 hover:bg-primary-container/40 hover:text-on-primary'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-              <span className="font-body-sm text-body-sm font-medium">{item.label}</span>
-            </a>
-          ))}
+          {bottomItems.map((item, index) => {
+            if (item.danger) {
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={onLogout}
+                  title={currentUser ? `Keluar (${currentUser.username})` : 'Keluar'}
+                  className="w-full flex items-center gap-space-sm px-space-sm py-space-xs rounded-lg transition-colors text-on-primary/80 hover:bg-error-container hover:text-on-error-container"
+                >
+                  <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                  <span className="font-body-sm text-body-sm font-medium">{item.label}</span>
+                </button>
+              )
+            }
+            return (
+              <a
+                key={index}
+                href={item.href}
+                data-path={item.path}
+                className="flex items-center gap-space-sm px-space-sm py-space-xs rounded-lg transition-colors text-on-primary/80 hover:bg-primary-container/40 hover:text-on-primary"
+              >
+                <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                <span className="font-body-sm text-body-sm font-medium">{item.label}</span>
+              </a>
+            )
+          })}
         </div>
       </div>
     </aside>
