@@ -8,6 +8,7 @@ import CascadingActions from './components/CascadingActions'
 import AuditLog from './components/AuditLog'
 import UnitKerjaForm from './components/UnitKerjaForm'
 import MasterUserForm from './components/MasterUserForm'
+import PeriodeKinerjaForm from './components/PeriodeKinerjaForm'
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
@@ -23,6 +24,8 @@ function App() {
               <UnitKerjaForm />
             ) : activePage === 'master-user' ? (
               <MasterUserForm />
+            ) : activePage === 'periode-kinerja' ? (
+              <PeriodeKinerjaForm />
             ) : (
               <div className="flex flex-col w-full">
             {/* Breadcrumb & Page Command Hub */}
