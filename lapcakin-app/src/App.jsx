@@ -7,6 +7,7 @@ import DocumentPanel from './components/DocumentPanel'
 import CascadingActions from './components/CascadingActions'
 import AuditLog from './components/AuditLog'
 import UnitKerjaForm from './components/UnitKerjaForm'
+import MasterUserForm from './components/MasterUserForm'
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
@@ -20,6 +21,8 @@ function App() {
           <div className="mx-auto w-full max-w-[1720px]">
             {activePage === 'unit-kerja' ? (
               <UnitKerjaForm />
+            ) : activePage === 'master-user' ? (
+              <MasterUserForm />
             ) : (
               <div className="flex flex-col w-full">
             {/* Breadcrumb & Page Command Hub */}
