@@ -23,7 +23,7 @@ const bottomItems = [
   { icon: 'logout', label: 'Keluar', href: '#', path: 'login', danger: true },
 ]
 
-function Sidebar({ activePage, onNavigate, currentUser, onLogout }) {
+function Sidebar({ activePage, onNavigate, currentUser, onLogout, onPortalGallery }) {
   const isKepalaSeksi =
     currentUser?.peran === 'Kepala Satker' ||
     (currentUser?.peran ?? '').toLowerCase().includes('kepala seksi') ||
@@ -92,6 +92,20 @@ function Sidebar({ activePage, onNavigate, currentUser, onLogout }) {
                   onClick={onLogout}
                   title={currentUser ? `Keluar (${currentUser.username})` : 'Keluar'}
                   className="w-full flex items-center gap-space-sm px-space-sm py-space-xs rounded-lg transition-colors text-on-primary/80 hover:bg-error-container hover:text-on-error-container"
+                >
+                  <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                  <span className="font-body-sm text-body-sm font-medium">{item.label}</span>
+                </button>
+              )
+            }
+            if (item.path === 'portal-publik') {
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={onPortalGallery}
+                  title="Galeri Portal Publik"
+                  className="w-full flex items-center gap-space-sm px-space-sm py-space-xs rounded-lg transition-colors text-on-primary/80 hover:bg-primary-container/40 hover:text-on-primary"
                 >
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   <span className="font-body-sm text-body-sm font-medium">{item.label}</span>

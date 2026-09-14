@@ -150,11 +150,14 @@ function PublicPortal({ onLogin }) {
   })
   const [orgLoading, setOrgLoading] = useState(true)
 
+  // Galeri foto real dari tabel galeri_kegiatan (unggahan tiap seksi).
+  const [galeriRows, setGaleriRows] = useState([])
+
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
-        const [iksk, unit, pegawai, skFull, ikskFull, unitFull, casc, rencana, realisasi] = await Promise.all([
+        const [iksk, unit, pegawai, skFull, ikskFull, unitFull, casc, rencana, realisasi, galeri] = await Promise.all([
           supabase.from('perkin_iksk').select('id, uraian, target_tahunan, satuan').order('nomor_urut', { ascending: true }).limit(50),
           supabase.from('unit_kerja').select('id', { count: 'exact', head: true }),
           supabase.from('master_users').select('nama_lengkap, username, jabatan, peran, unit_kerja_nama, status').eq('status', 'Aktif').order('nama_lengkap').limit(50),
@@ -164,6 +167,8 @@ function PublicPortal({ onLogin }) {
           supabase.from('cascading_kinerja').select('*'),
           supabase.from('rencana_aksi_kinerja').select('*'),
           supabase.from('realisasi_kinerja').select('*'),
+          // Galeri tayang; abaikan error bila tabel belum ada (fallback ke data statis).
+          supabase.from('galeri_kegiatan').select('*').eq('tampil', true).order('tanggal_kegiatan', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }).limit(12),
         ])
         if (cancelled) return
         setIkskRows(iksk.data ?? [])
@@ -181,6 +186,7 @@ function PublicPortal({ onLogin }) {
           rencanaRows: rencana.data ?? [],
           realisasiRows: realisasi.data ?? [],
         })
+        if (!galeri.error) setGaleriRows(galeri.data ?? [])
       } catch {
         // Tabel belum tersedia — biarkan fallback 0 / empty state.
       } finally {
@@ -215,12 +221,29 @@ function PublicPortal({ onLogin }) {
     else el.scrollBy({ left: stepWidth(), behavior: 'smooth' })
   }, [goTo, stepWidth])
 
+  // Galeri: foto real unggahan seksi bila ada, fallback ke data statis.
+  const gallery = galeriRows.length > 0
+    ? galeriRows.map((r) => ({
+        key: r.id,
+        unit: r.unit_kerja_nama || 'Seksi',
+        badgeClass: 'bg-emerald-700',
+        date: r.tanggal_kegiatan
+          ? new Date(`${r.tanggal_kegiatan}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+          : '-',
+        title: r.judul,
+        desc: r.deskripsi || '',
+        status: r.status_label || 'Dokumentasi Lapangan',
+        location: r.lokasi || '',
+        img: supabase.storage.from('galeri-portal').getPublicUrl(r.image_path).data.publicUrl,
+      }))
+    : galleryItems.map((g) => ({ key: g.title, ...g }))
+
   const goPrev = useCallback(() => {
     const el = trackRef.current
     if (!el) return
-    if (el.scrollLeft <= 8) goTo(galleryItems.length - 1)
+    if (el.scrollLeft <= 8) goTo(gallery.length - 1)
     else el.scrollBy({ left: -stepWidth(), behavior: 'smooth' })
-  }, [goTo, stepWidth])
+  }, [goTo, stepWidth, gallery.length])
 
   useEffect(() => {
     if (paused) return
@@ -234,7 +257,7 @@ function PublicPortal({ onLogin }) {
     const el = trackRef.current
     if (!el) return
     const idx = Math.round(el.scrollLeft / stepWidth())
-    setActiveSlide(Math.max(0, Math.min(galleryItems.length - 1, idx)))
+    setActiveSlide(Math.max(0, Math.min(gallery.length - 1, idx)))
   }
 
   const chartRows = triwulanData[triwulan]
@@ -350,10 +373,13 @@ function PublicPortal({ onLogin }) {
                 Galeri Potret Pelaksanaan Kinerja Lapang
               </h2>
               <p className="text-xs text-emerald-100/80 font-normal mt-0.5">Potret realisasi program kerja, pembinaan, dan akuntabilitas pelayanan publik tahun 2026</p>
+              {galeriRows.length > 0 && (
+                <p className="text-[11px] text-emerald-300 font-semibold mt-1">Foto unggahan seksi • {galeriRows.length} tayang</p>
+              )}
             </div>
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
               <div className="flex gap-1 mr-2">
-                {galleryItems.map((_, i) => (
+                {gallery.map((_, i) => (
                   <button
                     key={i}
                     type="button"
@@ -390,9 +416,9 @@ function PublicPortal({ onLogin }) {
             className="flex gap-4 overflow-x-auto pb-2 pt-1 snap-x snap-mandatory"
             style={{ scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}
           >
-            {galleryItems.map((item) => (
+            {gallery.map((item) => (
               <article
-                key={item.title}
+                key={item.key ?? item.title}
                 data-card
                 className="min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 bg-white rounded-xl overflow-hidden shadow-lg border border-slate-100/20 group snap-start flex flex-col"
               >

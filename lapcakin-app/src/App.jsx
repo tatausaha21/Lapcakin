@@ -18,6 +18,7 @@ import DashboardSeksi from './components/DashboardSeksi'
 import MonitoringKinerja from './components/MonitoringKinerja'
 import LaporanKinerjaOrganisasi from './components/LaporanKinerjaOrganisasi'
 import BuktiDukungOrganisasi from './components/BuktiDukungOrganisasi'
+import GaleriPortalModal from './components/GaleriPortalModal'
 
 const seksiPages = [
   'dashboard-seksi',
@@ -57,6 +58,7 @@ function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [currentUser, setCurrentUser] = useState(null)
   const [authChecked, setAuthChecked] = useState(false)
+  const [galeriOpen, setGaleriOpen] = useState(false)
 
   // Pulihkan sesi: Supabase Auth dulu, fallback ke sesi demo lokal.
   useEffect(() => {
@@ -154,7 +156,7 @@ function App() {
 
   return (
     <div className="bg-background font-body-md text-body-md text-on-surface min-h-screen antialiased">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} currentUser={currentUser} onLogout={handleLogout} />
+      <Sidebar activePage={activePage} onNavigate={setActivePage} currentUser={currentUser} onLogout={handleLogout} onPortalGallery={() => setGaleriOpen(true)} />
       <div className="pl-0 lg:pl-[280px]">
         <Header currentUser={currentUser} />
         <main className="relative pt-0 lg:pt-16 min-h-screen bg-surface w-full px-container-padding-mobile lg:px-container-padding-desktop py-space-xl">
@@ -193,6 +195,9 @@ function App() {
       </div>
     </main>
   </div>
+  {galeriOpen && (
+    <GaleriPortalModal currentUser={currentUser} onClose={() => setGaleriOpen(false)} />
+  )}
 </div>
   )
 }
