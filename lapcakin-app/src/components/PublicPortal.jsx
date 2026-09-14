@@ -12,7 +12,7 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import LoginModal from './LoginModal'
-import { computeOrganisasi, normalizeTw, TW_TARGET_PERSEN } from '../lib/kinerjaOrganisasi'
+import { computeOrganisasi, computePerSeksi, normalizeTw, shortUnitName, TW_TARGET_PERSEN } from '../lib/kinerjaOrganisasi'
 
 function formatRupiahShort(value) {
   const num = Number(value)
@@ -260,9 +260,8 @@ function PublicPortal({ onLogin }) {
     setActiveSlide(Math.max(0, Math.min(gallery.length - 1, idx)))
   }
 
-  const chartRows = triwulanData[triwulan]
-  const rankedUnits = [...chartRows].sort((a, b) => b.capaian - a.capaian)
-  const orgAvg = chartRows.reduce((sum, r) => sum + r.capaian, 0) / chartRows.length
+  const simRows = triwulanData[triwulan]
+  const orgAvg = simRows.reduce((sum, r) => sum + r.capaian, 0) / simRows.length
   const orgPredikat = predikat(orgAvg)
 
   // ---- Statistik organisasi real (sama dengan footer Laporan Kinerja Organisasi) ----
@@ -284,6 +283,36 @@ function PublicPortal({ onLogin }) {
   }
   const hasOrgReal = !!portalFooter && (portalFooter.ikskCount > 0 || portalFooter.rencanaCount > 0)
   const realPredikat = predikat(portalFooter?.rataCapaian ?? 0)
+
+  // ---- Grafik per unit kerja: agregasi real yang sama dengan Dashboard Admin ----
+  const CHART_COLORS = ['#059669', '#2563EB', '#D97706', '#0D9488', '#7C3AED', '#DB2777', '#0891B2', '#65A30D']
+  let seksiReal = []
+  try {
+    seksiReal = computePerSeksi({
+      unitList: orgDataset.unitList,
+      cascadingRows: orgDataset.cascadingRows,
+      rencanaRows: orgDataset.rencanaRows,
+      realisasiRows: orgDataset.realisasiRows,
+      ikskList: orgDataset.ikskList,
+      filterTahun: portalTahun,
+      filterTriwulan: portalTw,
+    })
+  } catch {
+    seksiReal = []
+  }
+  const realChartRows = seksiReal
+    .filter((g) => g.rataCapaian !== null)
+    .map((g, i) => ({
+      unit: shortUnitName(g.unit.nama_unit),
+      full: g.unit.nama_unit,
+      capaian: Number(g.rataCapaian.toFixed(2)),
+      rencana: g.rencana,
+      terealisasi: g.terealisasi,
+      color: CHART_COLORS[i % CHART_COLORS.length],
+    }))
+  const hasChartReal = realChartRows.length > 0
+  const chartRows = hasChartReal ? realChartRows : triwulanData[triwulan]
+  const rankedUnits = [...chartRows].sort((a, b) => b.capaian - a.capaian)
 
   const rankTabs = [
     { id: 'unit', label: 'Peringkat Unit Kerja' },
@@ -584,9 +613,15 @@ function PublicPortal({ onLogin }) {
                   </button>
                 ))}
               </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 tracking-wide uppercase">
-                Data Simulasi
-              </span>
+              {hasChartReal ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 tracking-wide uppercase">
+                  Data Real • TA {portalTahun}
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 tracking-wide uppercase">
+                  Data Simulasi
+                </span>
+              )}
             </div>
           </div>
 
@@ -594,7 +629,7 @@ function PublicPortal({ onLogin }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartRows} margin={{ top: 16, right: 16, bottom: 8, left: 0 }} barCategoryGap="28%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                <XAxis dataKey="unit" tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }} axisLine={{ stroke: '#CBD5E1' }} tickLine={false} />
+                <XAxis dataKey="unit" tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }} axisLine={{ stroke: '#CBD5E1' }} tickLine={false} interval={0} />
                 <YAxis
                   domain={[0, 120]}
                   ticks={[0, 20, 40, 60, 80, 100, 120]}
@@ -673,7 +708,11 @@ function PublicPortal({ onLogin }) {
                   })}
                 </tbody>
               </table>
-              <p className="mt-3 text-[11px] text-slate-400">Peringkat mengikuti triwulan aktif pada grafik di atas · Data simulasi.</p>
+              <p className="mt-3 text-[11px] text-slate-400">
+                {hasChartReal
+                  ? `Peringkat mengikuti triwulan aktif pada grafik di atas · Data real TA ${portalTahun} (rata-rata capaian per seksi, rumus Dashboard Admin).`
+                  : 'Peringkat mengikuti triwulan aktif pada grafik di atas · Data simulasi.'}
+              </p>
             </div>
           )}
 

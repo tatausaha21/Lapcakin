@@ -252,8 +252,95 @@ export function computeOrganisasi({
   return { rows, footer }
 }
 
+export function shortUnitName(nama) {
+  if (!nama) return '-'
+  return nama
+    .replace(/^Seksi\s+/i, '')
+    .replace(/^Subbagian\s+/i, 'Subbag ')
+    .replace(/^Sub Bagian\s+/i, 'Subbag ')
+    .trim()
+    .split(' ')
+    .slice(0, 2)
+    .join(' ')
+}
+
 export function ikskNumberOf(iksk, skById) {
   if (!iksk) return '-'
   const sk = skById?.[iksk.sk_id]
   return sk ? `${sk.nomor}.${iksk.nomor_urut}` : `-.${iksk.nomor_urut}`
+}
+
+/**
+ * Agregasi per seksi / unit kerja — dipakai bersama oleh:
+ * - src/components/DashboardAdmin.jsx (grafik + tabel rekap seksi)
+ * - src/components/PublicPortal.jsx (grafik capaian per unit kerja)
+ *
+ * Rumus % realisasi + % capaian per rencana sama persis dengan
+ * Laporan Kinerja Seksi; rata-rata capaian = rata-rata capaian
+ * rencana unit tersebut (abaikan yang null), capping 0–120%.
+ *
+ * @returns {Array} [{ unit, rencana, terealisasi, rataCapaian,
+ *   anggaran, serapan, kendala, bukti }] terurut capaian tertinggi.
+ */
+export function computePerSeksi({
+  unitList = [],
+  cascadingRows = [],
+  rencanaRows = [],
+  realisasiRows = [],
+  ikskList = [],
+  filterTahun = 'Semua',
+  filterTriwulan = 'Semua',
+}) {
+  const ikskById = Object.fromEntries(ikskList.map((i) => [i.id, i]))
+  const cascadingById = Object.fromEntries(cascadingRows.map((c) => [c.id, c]))
+
+  const inTahun = (t) => filterTahun === 'Semua' || String(t) === String(filterTahun)
+  const inTw = (tgl) => filterTriwulan === 'Semua' || triwulanOf(tgl) === filterTriwulan
+
+  const rencanaOfUnit = new Map()
+  for (const r of rencanaRows) {
+    if (!inTahun(r.tahun_anggaran)) continue
+    const cascading = cascadingById[r.cascading_id] || null
+    if (!cascading) continue
+    const unitId = cascading.unit_kerja_id
+    if (!rencanaOfUnit.has(unitId)) rencanaOfUnit.set(unitId, [])
+    rencanaOfUnit.get(unitId).push({ rencana: r, cascading })
+  }
+
+  return unitList.map((unit) => {
+    const items = (rencanaOfUnit.get(unit.id) ?? []).map(({ rencana, cascading }) => {
+      const iksk = ikskById[cascading.iksk_id] || null
+      const entries = realisasiRows.filter((e) => {
+        if (e.rencana_aksi_id !== rencana.id) return false
+        if (!inTahun(e.tahun_anggaran)) return false
+        if (!inTw(e.tanggal_kegiatan)) return false
+        return true
+      })
+      const nums = entries.map((e) => parseNum(e.realisasi_kinerja)).filter((n) => !Number.isNaN(n))
+      const total = nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : NaN
+      const persen = calcRealisasiPersen(total, rencana.target_kinerja, rencana.satuan)
+      const capaian = calcCapaian(persen, iksk?.target_tahunan, iksk?.polaritas ?? 'Positive')
+      const anggaran = rencana.anggaran === null || rencana.anggaran === undefined ? 0 : Number(rencana.anggaran) || 0
+      const serapan = entries.reduce((s, e) => s + (e.realisasi_anggaran === null || e.realisasi_anggaran === undefined ? 0 : Number(e.realisasi_anggaran) || 0), 0)
+      const kendala = entries.filter((e) => e.catatan_kendala && String(e.catatan_kendala).trim() !== '').length
+      const bukti = entries.filter((e) => e.bukti_path).length
+      return { rencana, iksk, entries, persen, capaian, anggaran, serapan, kendala, bukti }
+    })
+    const capaians = items.map((it) => it.capaian).filter((c) => c !== null && c !== undefined)
+    return {
+      unit,
+      rencana: items.length,
+      terealisasi: items.filter((it) => it.entries.length > 0).length,
+      rataCapaian: capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null,
+      anggaran: items.reduce((s, it) => s + it.anggaran, 0),
+      serapan: items.reduce((s, it) => s + it.serapan, 0),
+      kendala: items.reduce((s, it) => s + it.kendala, 0),
+      bukti: items.reduce((s, it) => s + it.bukti, 0),
+    }
+  }).sort((a, b) => {
+    if (a.rataCapaian === null && b.rataCapaian === null) return a.unit.nama_unit.localeCompare(b.unit.nama_unit, 'id')
+    if (a.rataCapaian === null) return 1
+    if (b.rataCapaian === null) return -1
+    return b.rataCapaian - a.rataCapaian
+  })
 }
