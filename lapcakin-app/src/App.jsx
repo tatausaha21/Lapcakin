@@ -15,6 +15,10 @@ import PerkinForm from './components/PerkinForm'
 import CascadingForm from './components/CascadingForm'
 import KepalaSeksiPage from './components/KepalaSeksiPage'
 import RencanaAksiForm from './components/RencanaAksiForm'
+import RealisasiKinerjaForm from './components/RealisasiKinerjaForm'
+import LaporanKinerjaSeksi from './components/LaporanKinerjaSeksi'
+import BuktiDukungSeksi from './components/BuktiDukungSeksi'
+import DashboardSeksi from './components/DashboardSeksi'
 
 const seksiPages = [
   'dashboard-seksi',
@@ -166,8 +170,16 @@ function App() {
               <PerkinForm />
             ) : activePage === 'cascading' ? (
               <CascadingForm />
+            ) : activePage === 'dashboard-seksi' ? (
+              <DashboardSeksi currentUser={currentUser} onNavigate={setActivePage} />
             ) : activePage === 'rencana-aksi-kinerja' ? (
               <RencanaAksiForm currentUser={currentUser} />
+            ) : activePage === 'input-realisasi-kinerja' ? (
+              <RealisasiKinerjaForm currentUser={currentUser} />
+            ) : activePage === 'laporan-kinerja-seksi' ? (
+              <LaporanKinerjaSeksi currentUser={currentUser} />
+            ) : activePage === 'bukti-dukung-seksi' ? (
+              <BuktiDukungSeksi currentUser={currentUser} />
             ) : seksiPages.includes(activePage) ? (
               <KepalaSeksiPage activePage={activePage} currentUser={currentUser} />
             ) : (
