@@ -20,6 +20,7 @@ import LaporanKinerjaSeksi from './components/LaporanKinerjaSeksi'
 import BuktiDukungSeksi from './components/BuktiDukungSeksi'
 import DashboardSeksi from './components/DashboardSeksi'
 import MonitoringKinerja from './components/MonitoringKinerja'
+import LaporanKinerjaOrganisasi from './components/LaporanKinerjaOrganisasi'
 
 const seksiPages = [
   'dashboard-seksi',
@@ -183,6 +184,8 @@ function App() {
               <BuktiDukungSeksi currentUser={currentUser} />
             ) : activePage === 'monitoring' ? (
               <MonitoringKinerja />
+            ) : activePage === 'laporan-kinerja' ? (
+              <LaporanKinerjaOrganisasi />
             ) : seksiPages.includes(activePage) ? (
               <KepalaSeksiPage activePage={activePage} currentUser={currentUser} />
             ) : (

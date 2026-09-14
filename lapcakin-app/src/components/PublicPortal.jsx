@@ -12,6 +12,21 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import LoginModal from './LoginModal'
+import { computeOrganisasi, normalizeTw, TW_TARGET_PERSEN } from '../lib/kinerjaOrganisasi'
+
+function formatRupiahShort(value) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return '-'
+  if (Math.abs(num) >= 1_000_000_000) return `Rp ${(num / 1_000_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} M`
+  if (Math.abs(num) >= 1_000_000) return `Rp ${(num / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} jt`
+  if (Math.abs(num) >= 1000) return `Rp ${(num / 1000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} rb`
+  return `Rp ${num.toLocaleString('id-ID')}`
+}
+
+function formatPersenID(v) {
+  if (v === null || v === undefined) return '-'
+  return `${v.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+}
 
 // ---------- Data galeri (dokumentasi lapangan) ----------
 const galleryItems = [
@@ -129,14 +144,26 @@ function PublicPortal({ onLogin }) {
   const [ikskRows, setIkskRows] = useState([])
   const [pegawaiRows, setPegawaiRows] = useState([])
 
+  // Dataset agregasi organisasi (sumber yang sama dengan Laporan Kinerja Organisasi).
+  const [orgDataset, setOrgDataset] = useState({
+    skList: [], ikskList: [], unitList: [], cascadingRows: [], rencanaRows: [], realisasiRows: [],
+  })
+  const [orgLoading, setOrgLoading] = useState(true)
+
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
-        const [iksk, unit, pegawai] = await Promise.all([
+        const [iksk, unit, pegawai, skFull, ikskFull, unitFull, casc, rencana, realisasi] = await Promise.all([
           supabase.from('perkin_iksk').select('id, uraian, target_tahunan, satuan').order('nomor_urut', { ascending: true }).limit(50),
           supabase.from('unit_kerja').select('id', { count: 'exact', head: true }),
           supabase.from('master_users').select('nama_lengkap, username, jabatan, peran, unit_kerja_nama, status').eq('status', 'Aktif').order('nama_lengkap').limit(50),
+          supabase.from('perkin_sk').select('*'),
+          supabase.from('perkin_iksk').select('*'),
+          supabase.from('unit_kerja').select('*'),
+          supabase.from('cascading_kinerja').select('*'),
+          supabase.from('rencana_aksi_kinerja').select('*'),
+          supabase.from('realisasi_kinerja').select('*'),
         ])
         if (cancelled) return
         setIkskRows(iksk.data ?? [])
@@ -146,8 +173,18 @@ function PublicPortal({ onLogin }) {
           unit: typeof unit.count === 'number' ? unit.count : 0,
           pegawai: (pegawai.data ?? []).length,
         })
+        setOrgDataset({
+          skList: skFull.data ?? [],
+          ikskList: ikskFull.data ?? [],
+          unitList: unitFull.data ?? [],
+          cascadingRows: casc.data ?? [],
+          rencanaRows: rencana.data ?? [],
+          realisasiRows: realisasi.data ?? [],
+        })
       } catch {
         // Tabel belum tersedia — biarkan fallback 0 / empty state.
+      } finally {
+        if (!cancelled) setOrgLoading(false)
       }
     }
     load()
@@ -204,6 +241,26 @@ function PublicPortal({ onLogin }) {
   const rankedUnits = [...chartRows].sort((a, b) => b.capaian - a.capaian)
   const orgAvg = chartRows.reduce((sum, r) => sum + r.capaian, 0) / chartRows.length
   const orgPredikat = predikat(orgAvg)
+
+  // ---- Statistik organisasi real (sama dengan footer Laporan Kinerja Organisasi) ----
+  const portalTw = normalizeTw(triwulan) ?? 'TW I'
+  const portalTahun = (() => {
+    const years = [
+      ...orgDataset.cascadingRows.map((r) => Number(r.tahun_anggaran)),
+      ...orgDataset.rencanaRows.map((r) => Number(r.tahun_anggaran)),
+    ].filter((n) => Number.isFinite(n))
+    if (years.length === 0) return 'Semua'
+    return String(Math.max(...years))
+  })()
+  const portalTargetTw = TW_TARGET_PERSEN[portalTw] ?? 100
+  let portalFooter = null
+  try {
+    portalFooter = computeOrganisasi({ ...orgDataset, filterTahun: portalTahun, filterTriwulan: portalTw }).footer
+  } catch {
+    portalFooter = null
+  }
+  const hasOrgReal = !!portalFooter && (portalFooter.ikskCount > 0 || portalFooter.rencanaCount > 0)
+  const realPredikat = predikat(portalFooter?.rataCapaian ?? 0)
 
   const rankTabs = [
     { id: 'unit', label: 'Peringkat Unit Kerja' },
@@ -371,7 +428,7 @@ function PublicPortal({ onLogin }) {
           </div>
         </section>
 
-        {/* ===== 2. Stat cards & metric summary ===== */}
+        {/* ===== 2. Stat cards & metric summary (real dari footer Laporan Kinerja Organisasi) ===== */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100 flex flex-col justify-between hover:shadow-xl transition-shadow">
             <div className="flex items-start gap-3">
@@ -383,16 +440,21 @@ function PublicPortal({ onLogin }) {
               <span className="text-[11px] font-bold tracking-wider text-slate-500 uppercase leading-snug">Persentase Capaian Organisasi</span>
             </div>
             <div className="mt-4 text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
-              {orgAvg.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+              {orgLoading ? '…' : formatPersenID(portalFooter?.persenCapaianOrg)}
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs">
               <span className="text-slate-500 font-medium">Predikat:</span>
-              <span className={`inline-block px-2 py-0.5 text-[11px] font-bold rounded-md border ${orgPredikat.cls} border-transparent`}>
-                {orgPredikat.label}
+              <span className={`inline-block px-2 py-0.5 text-[11px] font-bold rounded-md border ${hasOrgReal ? realPredikat.cls : orgPredikat.cls} border-transparent`}>
+                {hasOrgReal ? realPredikat.label : orgPredikat.label}
               </span>
             </div>
+            <div className="mt-1 text-[11px] text-slate-500 font-medium">
+              {hasOrgReal
+                ? `Rata-rata ${formatPersenID(portalFooter.rataCapaian)} ÷ target ${portalTw} ${portalTargetTw}% • TA ${portalTahun}`
+                : 'Menunggu data realisasi seksi'}
+            </div>
             <div className="w-full bg-slate-100 h-1.5 rounded-full mt-5 overflow-hidden">
-              <div className="bg-emerald-600 h-full" style={{ width: `${Math.min(100, orgAvg)}%` }} />
+              <div className="bg-emerald-600 h-full" style={{ width: `${Math.min(100, portalFooter?.persenCapaianOrg ?? orgAvg)}%` }} />
             </div>
           </div>
 
@@ -405,13 +467,15 @@ function PublicPortal({ onLogin }) {
               </div>
               <span className="text-[11px] font-bold tracking-wider text-slate-500 uppercase leading-snug">Persentase Capaian Realisasi Target</span>
             </div>
-            <div className="mt-4 text-3xl lg:text-4xl font-extrabold text-blue-600 tracking-tight">95,00%</div>
+            <div className="mt-4 text-3xl lg:text-4xl font-extrabold text-blue-600 tracking-tight">
+              {orgLoading ? '…' : formatPersenID(portalFooter?.avgRealisasiTarget)}
+            </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-600">
-              <span>Benchmark Target:</span>
-              <span className="font-bold text-slate-900">100.00%</span>
+              <span>Rata-rata % realisasi {portalFooter ? `${portalFooter.ikskCount} IKSK` : ''}:</span>
+              <span className="font-bold text-slate-900">{hasOrgReal ? `${portalFooter.rencanaCount} rencana` : 'Data Simulasi 100.00%'}</span>
             </div>
             <div className="w-full bg-slate-100 h-1.5 rounded-full mt-5 overflow-hidden">
-              <div className="bg-blue-600 h-full w-[95%] rounded-full shadow-sm" />
+              <div className="bg-blue-600 h-full rounded-full shadow-sm" style={{ width: `${Math.min(100, portalFooter?.avgRealisasiTarget ?? 95)}%` }} />
             </div>
           </div>
 
@@ -420,10 +484,16 @@ function PublicPortal({ onLogin }) {
               <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shrink-0 shadow-sm font-black text-lg">$</div>
               <span className="text-[11px] font-bold tracking-wider text-slate-500 uppercase leading-snug">Persentase Realisasi Anggaran</span>
             </div>
-            <div className="mt-4 text-3xl lg:text-4xl font-extrabold text-amber-500 tracking-tight">0,00%</div>
-            <div className="mt-1 text-xs text-slate-500 font-medium">Rp 0.0jt <span className="text-slate-400">/ 0.0jt DIPA</span></div>
+            <div className="mt-4 text-3xl lg:text-4xl font-extrabold text-amber-500 tracking-tight">
+              {orgLoading ? '…' : formatPersenID(portalFooter?.persenRealisasiAnggaran)}
+            </div>
+            <div className="mt-1 text-xs text-slate-500 font-medium">
+              {hasOrgReal
+                ? <>{formatRupiahShort(portalFooter.jumlahRealisasi)} <span className="text-slate-400">/ {formatRupiahShort(portalFooter.jumlahAnggaran)} DIPA</span></>
+                : <>Rp 0.0jt <span className="text-slate-400">/ 0.0jt DIPA</span></>}
+            </div>
             <div className="w-full bg-slate-100 h-1.5 rounded-full mt-5 overflow-hidden">
-              <div className="bg-amber-400 h-full w-0" />
+              <div className="bg-amber-400 h-full" style={{ width: `${Math.min(100, portalFooter?.persenRealisasiAnggaran ?? 0)}%` }} />
             </div>
           </div>
 

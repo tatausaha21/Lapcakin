@@ -1,0 +1,259 @@
+// Agregasi level organisasi — dipakai bersama oleh:
+// - src/components/LaporanKinerjaOrganisasi.jsx (tabel + footer + export)
+// - src/components/PublicPortal.jsx (statistic cards)
+// Rumus disamakan dengan Laporan Kinerja Seksi.
+
+export function parseNum(str) {
+  if (str === null || str === undefined) return NaN
+  const m = String(str).replace(',', '.').match(/-?\d+(\.\d+)?/)
+  return m ? Number(m[0]) : NaN
+}
+
+// % realisasi target per rencana (sama persis dengan laporan seksi):
+// Persen -> (total / target) * 100 capping 0..120;
+// selain itu -> target - total.
+export function calcRealisasiPersen(total, target, satuan) {
+  if (Number.isNaN(total)) return null
+  if (satuan === 'Persen') {
+    const t = parseNum(target)
+    if (Number.isNaN(t) || t === 0) return null
+    return Math.min(120, Math.max(0, (total / t) * 100))
+  }
+  const t = parseNum(target)
+  if (Number.isNaN(t)) return null
+  return t - total
+}
+
+// % capaian kinerja dari polaritas IKSK (capping 0..120) — sama dengan seksi:
+// Positive -> (%realisasi / target tahunan) * 100
+// Negative -> (2 * (target tahunan / %realisasi)) * 100
+export function calcCapaian(persenRealisasi, targetTahunan, polaritas) {
+  if (persenRealisasi === null || persenRealisasi === undefined) return null
+  const t = parseNum(targetTahunan)
+  if (Number.isNaN(t)) return null
+  let v
+  if (polaritas === 'Negative') {
+    if (persenRealisasi === 0) return null
+    v = 2 * (t / persenRealisasi) * 100
+  } else {
+    if (t === 0) return null
+    v = (persenRealisasi / t) * 100
+  }
+  if (!Number.isFinite(v)) return null
+  return Math.min(120, Math.max(0, v))
+}
+
+export function triwulanOf(dateStr) {
+  if (!dateStr) return null
+  const m = new Date(`${dateStr}T00:00:00`).getMonth() + 1
+  if (m >= 1 && m <= 3) return 'TW I'
+  if (m >= 4 && m <= 6) return 'TW II'
+  if (m >= 7 && m <= 9) return 'TW III'
+  if (m >= 10 && m <= 12) return 'TW IV'
+  return null
+}
+
+export const TW_OPTIONS = ['TW I', 'TW II', 'TW III', 'TW IV']
+
+// Target triwulan untuk % capaian kinerja organisasi:
+// TW I = 25%, TW II = 50%, TW III = 75%, TW IV = 100%.
+export const TW_TARGET_PERSEN = {
+  'TW I': 25,
+  'TW II': 50,
+  'TW III': 75,
+  'TW IV': 100,
+}
+
+// Normalisasi label triwulan ('TW1', 'TW I', 'tw ii', ...) -> 'TW I' | ... | null
+export function normalizeTw(label) {
+  if (!label || label === 'Semua') return null
+  const s = String(label).toUpperCase().replace(/\s+/g, ' ').trim()
+  const m = s.match(/TW\s*([IV1234]+)/)
+  if (!m) return null
+  const v = m[1]
+  if (v === '1' || v === 'I') return 'TW I'
+  if (v === '2' || v === 'II') return 'TW II'
+  if (v === '3' || v === 'III') return 'TW III'
+  if (v === '4' || v === 'IV') return 'TW IV'
+  return null
+}
+
+export function targetTriwulanOf(filterTriwulan) {
+  if (!filterTriwulan || filterTriwulan === 'Semua') return 100
+  const norm = normalizeTw(filterTriwulan) ?? filterTriwulan
+  return TW_TARGET_PERSEN[norm] ?? 100
+}
+
+export function formatRupiah(value) {
+  if (value === null || value === undefined || value === '') return '-'
+  const num = Number(value)
+  if (Number.isNaN(num)) return '-'
+  return `Rp ${num.toLocaleString('id-ID')}`
+}
+
+/**
+ * Agregasi per IKSK level organisasi.
+ *
+ * @param {object} args
+ * @param {Array} args.skList
+ * @param {Array} args.ikskList
+ * @param {Array} args.unitList
+ * @param {Array} args.cascadingRows
+ * @param {Array} args.rencanaRows
+ * @param {Array} args.realisasiRows
+ * @param {string} args.filterTahun 'Semua' | '2026'
+ * @param {string} args.filterTriwulan 'Semua' | 'TW I' | ...
+ * @returns {{ rows: Array, footer: object }}
+ *
+ * Setiap row:
+ * { iksk, sk, seksiNames[], rencanaCount, persenOrg (rata-rata % realisasi),
+ *   anggaran, realisasiAnggaran, capaian, kendalaList[], bukti[], entriesCount }
+ */
+export function computeOrganisasi({
+  skList = [],
+  ikskList = [],
+  unitList = [],
+  cascadingRows = [],
+  rencanaRows = [],
+  realisasiRows = [],
+  filterTahun = 'Semua',
+  filterTriwulan = 'Semua',
+}) {
+  const skById = Object.fromEntries(skList.map((s) => [s.id, s]))
+  const ikskById = Object.fromEntries(ikskList.map((i) => [i.id, i]))
+  const cascadingById = Object.fromEntries(cascadingRows.map((c) => [c.id, c]))
+  const unitById = Object.fromEntries(unitList.map((u) => [u.id, u]))
+
+  const inTahunRencana = (t) => filterTahun === 'Semua' || String(t) === String(filterTahun)
+  const inTahunRealisasi = (t) => filterTahun === 'Semua' || String(t) === String(filterTahun)
+  const inTw = (tgl) => filterTriwulan === 'Semua' || triwulanOf(tgl) === filterTriwulan
+
+  // Hitung % realisasi per rencana dulu (rumus seksi), lalu kelompokkan per IKSK.
+  const perRencana = rencanaRows
+    .filter((r) => inTahunRencana(r.tahun_anggaran))
+    .map((r) => {
+      const cascading = cascadingById[r.cascading_id] || null
+      if (!cascading) return null
+      const iksk = ikskById[cascading.iksk_id] || null
+      if (!iksk) return null
+      const unit = unitById[cascading.unit_kerja_id] || null
+      const entries = realisasiRows.filter((e) => {
+        if (e.rencana_aksi_id !== r.id) return false
+        if (!inTahunRealisasi(e.tahun_anggaran)) return false
+        if (!inTw(e.tanggal_kegiatan)) return false
+        return true
+      })
+      const nums = entries.map((e) => parseNum(e.realisasi_kinerja)).filter((n) => !Number.isNaN(n))
+      const total = nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : NaN
+      const persen = calcRealisasiPersen(total, r.target_kinerja, r.satuan)
+      const angNums = entries
+        .map((e) => (e.realisasi_anggaran === null || e.realisasi_anggaran === undefined ? NaN : Number(e.realisasi_anggaran)))
+        .filter((n) => !Number.isNaN(n))
+      const totalAnggaran = angNums.length > 0 ? angNums.reduce((a, b) => a + b, 0) : 0
+      const kendalaList = entries
+        .filter((e) => e.catatan_kendala && String(e.catatan_kendala).trim() !== '')
+        .map((e) => ({
+          id: e.id,
+          teks: String(e.catatan_kendala).trim(),
+          tanggal: e.tanggal_kegiatan,
+          seksi: unit?.nama_unit ?? '-',
+          realisasi: e.realisasi_kinerja,
+        }))
+      const bukti = entries.filter((e) => e.bukti_path)
+      return {
+        rencana: r,
+        cascading,
+        iksk,
+        sk: skById[iksk.sk_id] || null,
+        unit,
+        entries,
+        persen,
+        totalAnggaran,
+        kendalaList,
+        bukti,
+      }
+    })
+    .filter(Boolean)
+
+  const groups = new Map()
+  for (const pr of perRencana) {
+    const id = pr.iksk.id
+    if (!groups.has(id)) {
+      groups.set(id, {
+        iksk: pr.iksk,
+        sk: pr.sk,
+        items: [],
+      })
+    }
+    groups.get(id).items.push(pr)
+  }
+
+  const rows = [...groups.values()]
+    .map((g) => {
+      const { iksk, sk, items } = g
+      // % Realisasi Target organisasi = rata-rata % realisasi seluruh seksi
+      // pada IKSK yang sama (abaikan yang null).
+      const persenVals = items.map((it) => it.persen).filter((p) => p !== null && p !== undefined)
+      const persenOrg = persenVals.length > 0
+        ? persenVals.reduce((a, b) => a + b, 0) / persenVals.length
+        : null
+      const capaian = calcCapaian(persenOrg, iksk?.target_tahunan, iksk?.polaritas ?? 'Positive')
+      const anggaran = items.reduce((s, it) => s + (it.rencana.anggaran === null || it.rencana.anggaran === undefined ? 0 : Number(it.rencana.anggaran) || 0), 0)
+      const realisasiAnggaran = items.reduce((s, it) => s + (it.totalAnggaran ?? 0), 0)
+      const kendalaList = items.flatMap((it) => it.kendalaList)
+      const bukti = items.flatMap((it) => it.bukti)
+      const seksiNames = [...new Set(items.map((it) => it.unit?.nama_unit ?? '-'))]
+      const entriesCount = items.reduce((s, it) => s + it.entries.length, 0)
+      return {
+        iksk, sk, items,
+        seksiNames,
+        rencanaCount: items.length,
+        entriesCount,
+        persenOrg,
+        anggaran,
+        realisasiAnggaran,
+        capaian,
+        kendalaList,
+        bukti,
+      }
+    })
+    .sort((a, b) => {
+      const skA = a.sk?.nomor ?? 999
+      const skB = b.sk?.nomor ?? 999
+      if (skA !== skB) return skA - skB
+      return (a.iksk?.nomor_urut ?? 999) - (b.iksk?.nomor_urut ?? 999)
+    })
+
+  const capaians = rows.map((r) => r.capaian).filter((c) => c !== null && c !== undefined)
+  const persenValsAll = rows.map((r) => r.persenOrg).filter((p) => p !== null && p !== undefined)
+  const rataCapaian = capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null
+  const avgRealisasiTarget = persenValsAll.length > 0 ? persenValsAll.reduce((a, b) => a + b, 0) / persenValsAll.length : null
+  const targetTriwulan = targetTriwulanOf(filterTriwulan)
+  // % capaian kinerja organisasi = (rata-rata capaian / target triwulan) * 100
+  const persenCapaianOrg = rataCapaian === null || !targetTriwulan ? null : (rataCapaian / targetTriwulan) * 100
+  const jumlahAnggaran = rows.reduce((s, r) => s + (r.anggaran ?? 0), 0)
+  const jumlahRealisasi = rows.reduce((s, r) => s + (r.realisasiAnggaran ?? 0), 0)
+  const persenRealisasiAnggaran = jumlahAnggaran > 0 ? (jumlahRealisasi / jumlahAnggaran) * 100 : null
+  const seksiSet = new Set(perRencana.map((p) => p.cascading?.unit_kerja_id).filter(Boolean))
+
+  const footer = {
+    rataCapaian,
+    targetTriwulan,
+    persenCapaianOrg,
+    jumlahAnggaran,
+    jumlahRealisasi,
+    persenRealisasiAnggaran,
+    avgRealisasiTarget,
+    ikskCount: rows.length,
+    rencanaCount: perRencana.length,
+    seksiCount: seksiSet.size,
+  }
+
+  return { rows, footer }
+}
+
+export function ikskNumberOf(iksk, skById) {
+  if (!iksk) return '-'
+  const sk = skById?.[iksk.sk_id]
+  return sk ? `${sk.nomor}.${iksk.nomor_urut}` : `-.${iksk.nomor_urut}`
+}
