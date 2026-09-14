@@ -47,12 +47,33 @@ function LoginPage({ onLogin }) {
   }
 
   const fetchProfile = async (authUserId, email) => {
-    let query = supabase.from('master_users').select('*')
-    if (authUserId) query = query.eq('auth_user_id', authUserId)
-    else query = query.eq('email', email)
-    const { data, error: profileError } = await query.maybeSingle()
-    if (profileError) throw profileError
-    return data
+    // 1) Coba berdasarkan auth_user_id dulu (jalur utama).
+    if (authUserId) {
+      const { data, error: profileError } = await supabase
+        .from('master_users')
+        .select('*')
+        .eq('auth_user_id', authUserId)
+        .maybeSingle()
+      if (profileError) throw profileError
+      if (data) return data
+    }
+    // 2) Fallback berdasarkan email + auto-link auth_user_id bila cocok.
+    //    Menangani kasus user Auth dibuat manual sebelum trigger
+    //    handle_new_user() dipasang / sebelum profil ditautkan.
+    if (email) {
+      const { data, error: emailError } = await supabase
+        .from('master_users')
+        .select('*')
+        .ilike('email', email)
+        .maybeSingle()
+      if (emailError) throw emailError
+      if (data && authUserId && !data.auth_user_id) {
+        await supabase.from('master_users').update({ auth_user_id: authUserId }).eq('id', data.id)
+        return { ...data, auth_user_id: authUserId }
+      }
+      return data
+    }
+    return null
   }
 
   const handleSubmit = async (event) => {

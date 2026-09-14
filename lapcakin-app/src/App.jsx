@@ -13,6 +13,15 @@ import MasterUserForm from './components/MasterUserForm'
 import PeriodeKinerjaForm from './components/PeriodeKinerjaForm'
 import PerkinForm from './components/PerkinForm'
 import CascadingForm from './components/CascadingForm'
+import KepalaSeksiPage from './components/KepalaSeksiPage'
+
+const seksiPages = [
+  'dashboard-seksi',
+  'rencana-aksi-kinerja',
+  'input-realisasi-kinerja',
+  'laporan-kinerja-seksi',
+  'bukti-dukung-seksi',
+]
 
 function getDemoSession() {
   try {
@@ -53,11 +62,30 @@ function App() {
         const { data } = await supabase.auth.getSession()
         const authUser = data?.session?.user
         if (authUser) {
-          const { data: profile } = await supabase
+          let profile = null
+          const byId = await supabase
             .from('master_users')
             .select('*')
             .eq('auth_user_id', authUser.id)
             .maybeSingle()
+          profile = byId.data ?? null
+          // Fallback: profil sudah ada berdasarkan email tapi auth_user_id
+          // belum tertaut (mis. user dibuat manual sebelum trigger dipasang).
+          // Tautkan otomatis agar login tetap jalan.
+          if (!profile && authUser.email) {
+            const byEmail = await supabase
+              .from('master_users')
+              .select('*')
+              .ilike('email', authUser.email)
+              .maybeSingle()
+            if (byEmail.data) {
+              await supabase
+                .from('master_users')
+                .update({ auth_user_id: authUser.id })
+                .eq('id', byEmail.data.id)
+              profile = { ...byEmail.data, auth_user_id: authUser.id }
+            }
+          }
           if (!cancelled) {
             if (profile && profile.status === 'Aktif') {
               setCurrentUser(toProfile(profile, authUser.id))
@@ -89,6 +117,13 @@ function App() {
       listener?.subscription?.unsubscribe()
     }
   }, [])
+
+  // Default halaman mengikuti peran: Kepala Satker langsung ke Input Realisasi Seksi.
+  useEffect(() => {
+    if (currentUser?.peran === 'Kepala Satker' && activePage === 'dashboard') {
+      setActivePage('input-realisasi-kinerja')
+    }
+  }, [currentUser, activePage])
 
   const handleLogout = async () => {
     try {
@@ -130,6 +165,8 @@ function App() {
               <PerkinForm />
             ) : activePage === 'cascading' ? (
               <CascadingForm />
+            ) : seksiPages.includes(activePage) ? (
+              <KepalaSeksiPage activePage={activePage} currentUser={currentUser} />
             ) : (
               <div className="flex flex-col w-full">
             {/* Breadcrumb & Page Command Hub */}
