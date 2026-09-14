@@ -14,6 +14,7 @@ import PeriodeKinerjaForm from './components/PeriodeKinerjaForm'
 import PerkinForm from './components/PerkinForm'
 import CascadingForm from './components/CascadingForm'
 import KepalaSeksiPage from './components/KepalaSeksiPage'
+import RencanaAksiForm from './components/RencanaAksiForm'
 
 const seksiPages = [
   'dashboard-seksi',
@@ -165,6 +166,8 @@ function App() {
               <PerkinForm />
             ) : activePage === 'cascading' ? (
               <CascadingForm />
+            ) : activePage === 'rencana-aksi-kinerja' ? (
+              <RencanaAksiForm currentUser={currentUser} />
             ) : seksiPages.includes(activePage) ? (
               <KepalaSeksiPage activePage={activePage} currentUser={currentUser} />
             ) : (
