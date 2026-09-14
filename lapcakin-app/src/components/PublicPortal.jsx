@@ -12,7 +12,8 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import LoginModal from './LoginModal'
-import { computeOrganisasi, computePerSeksi, normalizeTw, shortUnitName, TW_TARGET_PERSEN } from '../lib/kinerjaOrganisasi'
+import kemenagLogo from '../assets/kemenag.svg'
+import { computeOrganisasi, computePerSeksi, ikskNumberOf, normalizeTw, shortUnitName, TW_TARGET_PERSEN } from '../lib/kinerjaOrganisasi'
 
 function formatRupiahShort(value) {
   const num = Number(value)
@@ -314,9 +315,62 @@ function PublicPortal({ onLogin }) {
   const chartRows = hasChartReal ? realChartRows : triwulanData[triwulan]
   const rankedUnits = [...chartRows].sort((a, b) => b.capaian - a.capaian)
 
+  // ---- Peringkat ketercapaian per IKSK (real, diurut menaik: 0% teratas) ----
+  let ikskRankRows = []
+  try {
+    const skById = Object.fromEntries((orgDataset.skList ?? []).map((s) => [s.id, s]))
+    const org = computeOrganisasi({ ...orgDataset, filterTahun: portalTahun, filterTriwulan: portalTw })
+    ikskRankRows = org.rows
+      .map((r) => ({
+        id: r.iksk.id,
+        nomor: ikskNumberOf(r.iksk, skById),
+        uraian: r.iksk.uraian,
+        target: r.iksk.target_tahunan,
+        satuan: r.iksk.satuan,
+        persenOrg: r.persenOrg,
+        capaian: r.capaian,
+        seksiNames: r.seksiNames,
+      }))
+      .sort((a, b) => {
+        if (a.capaian === null && b.capaian === null) return 0
+        if (a.capaian === null) return 1
+        if (b.capaian === null) return -1
+        return a.capaian - b.capaian
+      })
+  } catch {
+    ikskRankRows = []
+  }
+
+  // ---- Peringkat pelaksana (real): penanggung jawab seksi + capaian unitnya ----
+  // (realisasi tercatat per seksi, bukan per individu — capaian pelaksana
+  // = rata-rata capaian unit kerja yang dipimpinnya, rumus Dashboard Admin)
+  const pelaksanaRankRows = (() => {
+    const byName = new Map(seksiReal.map((g) => [(g.unit.nama_unit ?? '').trim().toLowerCase(), g]))
+    const findUnit = (nama) => {
+      const key = (nama ?? '').trim().toLowerCase()
+      if (!key) return null
+      return byName.get(key)
+        ?? [...byName.entries()].find(([unitName]) => unitName.includes(key) || key.includes(unitName))?.[1]
+        ?? null
+    }
+    return pegawaiRows
+      .filter((p) => (p.peran ?? '').toLowerCase().includes('kepala'))
+      .map((p) => {
+        const g = findUnit(p.unit_kerja_nama)
+        return { ...p, capaian: g?.rataCapaian ?? null, rencana: g?.rencana ?? 0 }
+      })
+      .sort((a, b) => {
+        if (a.capaian === null && b.capaian === null) return 0
+        if (a.capaian === null) return 1
+        if (b.capaian === null) return -1
+        return b.capaian - a.capaian
+      })
+  })()
+  const hasPelaksanaReal = pelaksanaRankRows.length > 0 && seksiReal.length > 0
+
   const rankTabs = [
     { id: 'unit', label: 'Peringkat Unit Kerja' },
-    { id: 'iksk', label: 'Peringkat IKSK' },
+    { id: 'iksk', label: 'Ketercapaian per IKSK' },
     { id: 'pelaksana', label: 'Peringkat Pelaksana Kinerja' },
   ]
 
@@ -336,14 +390,12 @@ function PublicPortal({ onLogin }) {
       <header className="w-full px-4 sm:px-8 lg:px-12 pt-6 pb-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center text-white shadow-inner">
-              <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-              </svg>
+            <div className="w-10 h-10 rounded-xl bg-white border border-white/20 flex items-center justify-center shadow-inner shrink-0 p-1">
+              <img src={kemenagLogo} alt="Logo Kementerian Agama" className="w-full h-full object-contain" />
             </div>
             <div>
-              <span className="text-xs font-semibold tracking-wider text-emerald-200 uppercase block">Portal Kinerja Terbuka</span>
-              <span className="text-sm font-bold text-white tracking-wide">Sistem Pengukuran Kinerja Kemenag 2026</span>
+              <span className="text-xs font-semibold tracking-wider text-emerald-200 uppercase block">SICAKIN</span>
+              <span className="text-sm font-bold text-white tracking-wide">Sistem Informasi Laporan Capaian Kinerja</span>
             </div>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -692,7 +744,7 @@ function PublicPortal({ onLogin }) {
                   {rankedUnits.map((row, i) => {
                     const p = predikat(row.capaian)
                     return (
-                      <tr key={row.unit} className="hover:bg-slate-50/80">
+                      <tr key={row.full ?? row.unit} className="hover:bg-slate-50/80">
                         <td className="py-3.5 px-4 text-center">
                           <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-extrabold text-xs ${i === 0 ? 'bg-amber-100 text-amber-800' : i === 1 ? 'bg-slate-200 text-slate-700' : i === 2 ? 'bg-amber-700/20 text-amber-900' : 'bg-slate-100 text-slate-500'}`}>
                             {i + 1}
@@ -718,7 +770,57 @@ function PublicPortal({ onLogin }) {
 
           {rankTab === 'iksk' && (
             <div className="p-6">
-              {ikskRows.length === 0 ? (
+              {ikskRankRows.length > 0 ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs sm:text-sm min-w-[720px]">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                          <th className="py-3 px-4 w-16 text-center">Rank</th>
+                          <th className="py-3 px-4">IKSK</th>
+                          <th className="py-3 px-4 text-center">% Realisasi Target</th>
+                          <th className="py-3 px-4 text-center">% Capaian</th>
+                          <th className="py-3 px-4 text-center">Predikat</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                        {ikskRankRows.map((row, i) => {
+                          const p = predikat(row.capaian ?? 0)
+                          return (
+                            <tr key={row.id} className="hover:bg-slate-50/80">
+                              <td className="py-3.5 px-4 text-center">
+                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-extrabold text-xs ${row.capaian === null ? 'bg-slate-100 text-slate-500' : row.capaian <= 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>
+                                  {i + 1}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="font-bold text-slate-900">{row.uraian}</div>
+                                <div className="text-[11px] text-slate-400 font-normal">
+                                  IKSK {row.nomor} • Target {row.target} ({row.satuan}) • {row.seksiNames.join(', ')}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 text-center font-bold text-blue-700">
+                                {row.persenOrg === null ? '-' : `${row.persenOrg.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}
+                              </td>
+                              <td className="py-3.5 px-4 text-center font-bold text-emerald-700">
+                                {row.capaian === null ? '-' : `${row.capaian.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${p.cls}`}>
+                                  {row.capaian === null ? 'Belum ada data' : p.label}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-3 text-[11px] text-slate-400">
+                    Diurutkan menaik — capaian 0% teratas (butuh perhatian lebih dulu) · Data real TA {portalTahun} {portalTw} · % capaian = (% realisasi rata-rata seksi ÷ target tahunan) × 100.
+                  </p>
+                </>
+              ) : ikskRows.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-sm font-medium text-slate-500">Belum ada data Indikator Kinerja Sasaran Kegiatan (IKSK).</p>
                   <p className="text-xs text-slate-400 mt-1">Data IKSK disinkronisasi melalui Renstra dan Perjanjian Kinerja tahun berjalan.</p>
@@ -752,7 +854,53 @@ function PublicPortal({ onLogin }) {
 
           {rankTab === 'pelaksana' && (
             <div className="p-6">
-              {pegawaiRows.length === 0 ? (
+              {hasPelaksanaReal ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs sm:text-sm min-w-[640px]">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                          <th className="py-3 px-4 w-16 text-center">Rank</th>
+                          <th className="py-3 px-4">Nama Pelaksana</th>
+                          <th className="py-3 px-4">Unit Kerja</th>
+                          <th className="py-3 px-4 text-center">Capaian ({triwulan.replace('TW', 'TW ')})</th>
+                          <th className="py-3 px-4 text-center">Predikat</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                        {pelaksanaRankRows.map((row, i) => {
+                          const p = predikat(row.capaian ?? 0)
+                          return (
+                            <tr key={row.username ?? i} className="hover:bg-slate-50/80">
+                              <td className="py-3.5 px-4 text-center">
+                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-extrabold text-xs ${i === 0 ? 'bg-amber-100 text-amber-800' : i === 1 ? 'bg-slate-200 text-slate-700' : i === 2 ? 'bg-amber-700/20 text-amber-900' : 'bg-slate-100 text-slate-500'}`}>
+                                  {i + 1}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="font-bold text-slate-900">{row.nama_lengkap}</div>
+                                <div className="text-[11px] text-slate-400 font-normal">{row.jabatan}</div>
+                              </td>
+                              <td className="py-3.5 px-4">{row.unit_kerja_nama}</td>
+                              <td className="py-3.5 px-4 text-center font-bold text-emerald-700">
+                                {row.capaian === null ? '-' : `${row.capaian.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${p.cls}`}>
+                                  {row.capaian === null ? 'Belum ada data' : p.label}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-3 text-[11px] text-slate-400">
+                    Penanggung jawab seksi (Kepala Satker) · capaian = rata-rata capaian unitnya, TA {portalTahun} {portalTw} · realisasi tercatat per seksi, bukan per individu.
+                  </p>
+                </>
+              ) : pegawaiRows.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-sm font-medium text-slate-500">Belum ada rekapitulasi capaian individu pegawai.</p>
                   <p className="text-xs text-slate-400 mt-1">Hasil evaluasi SKP triwulan I tahun 2026 akan diumumkan serentak.</p>

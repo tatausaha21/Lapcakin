@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import kemenagLogo from '../assets/kemenag.svg'
 
 // Opsi peran persis seperti modal pada mockup portal publik.
 const portalRoles = [
@@ -206,10 +207,8 @@ function LoginPage({ onLogin }) {
       <header className="w-full px-4 sm:px-8 lg:px-12 pt-6 pb-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center text-white shadow-inner">
-              <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-              </svg>
+            <div className="w-10 h-10 rounded-xl bg-white border border-white/20 flex items-center justify-center shadow-inner shrink-0 p-1">
+              <img src={kemenagLogo} alt="Logo Kementerian Agama" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-xs font-semibold tracking-wider text-emerald-200 uppercase block">Portal Kinerja Terbuka</span>

@@ -1,3 +1,5 @@
+import kemenagLogo from '../assets/kemenag.svg'
+
 const adminNavigationItems = [
   { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', href: '#' },
   { id: 'unit-kerja', icon: 'apartment', label: 'Master Unit Kerja', href: '#' },
@@ -35,8 +37,8 @@ function Sidebar({ activePage, onNavigate, currentUser, onLogout, onPortalGaller
     <aside className="max-lg:relative max-lg:w-full max-lg:h-auto lg:fixed lg:left-0 lg:top-0 lg:h-full lg:w-[280px] bg-primary text-on-primary z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.08)] overflow-hidden">
       <div className="flex flex-col h-auto lg:h-full">
         <div className="p-space-lg flex items-center gap-space-sm bg-primary">
-          <div className="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-primary-fixed shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
-            <span className="material-symbols-outlined text-[24px]">account_balance</span>
+          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.2)] shrink-0 p-1">
+            <img src={kemenagLogo} alt="Logo Kementerian Agama" className="w-full h-full object-contain" />
           </div>
           <div className="flex flex-col overflow-hidden">
             <span className="font-title-sm text-title-sm text-on-primary tracking-tight font-bold truncate">LAPCAKIN</span>

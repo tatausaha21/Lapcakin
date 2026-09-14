@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { BuktiViewer } from './RealisasiKinerjaForm'
+import { targetTriwulanOf } from '../lib/kinerjaOrganisasi'
 
 // ---------- Helper angka (konsisten dengan Input Realisasi) ----------
 function parseNum(str) {
@@ -84,6 +85,7 @@ function LaporanKinerjaSeksi({ currentUser }) {
   const [filterTahun, setFilterTahun] = useState('Semua')
   const [filterTriwulan, setFilterTriwulan] = useState('Semua')
   const [viewerRow, setViewerRow] = useState(null)
+  const [exporting, setExporting] = useState(false)
 
   const fetchAll = useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -210,14 +212,158 @@ function LaporanKinerjaSeksi({ currentUser }) {
 
   const summary = useMemo(() => {
     const capaians = recap.map((r) => r.capaian).filter((c) => c !== null)
+    const rataCapaian = capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null
+    const totalAnggaranRencana = recap.reduce((s, r) => s + (r.rencana.anggaran === null ? 0 : Number(r.rencana.anggaran) || 0), 0)
+    const totalRealisasiAnggaran = recap.reduce((s, r) => s + (r.totalAnggaran ?? 0), 0)
+    // Ringkasan kaki dokumen (sama pola dengan Laporan Kinerja Organisasi).
+    const targetTw = targetTriwulanOf(filterTriwulan)
     return {
       rencana: recap.length,
       terealisasi: recap.filter((r) => r.entries.length > 0).length,
-      rataCapaian: capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null,
-      totalAnggaranRencana: recap.reduce((s, r) => s + (r.rencana.anggaran === null ? 0 : Number(r.rencana.anggaran) || 0), 0),
-      totalRealisasiAnggaran: recap.reduce((s, r) => s + (r.totalAnggaran ?? 0), 0),
+      rataCapaian,
+      totalAnggaranRencana,
+      totalRealisasiAnggaran,
+      targetTw,
+      persenCapaianTw: rataCapaian === null || !targetTw ? null : (rataCapaian / targetTw) * 100,
+      persenRealisasiAnggaran: totalAnggaranRencana > 0 ? (totalRealisasiAnggaran / totalAnggaranRencana) * 100 : null,
     }
-  }, [recap])
+  }, [recap, filterTriwulan])
+
+  const escapeHtml = (s) => String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
+  const seksiNama = userUnit?.nama_unit ?? currentUser?.unitKerjaNama ?? 'Seksi'
+  const triwulanLabel = filterTriwulan === 'Semua' ? 'SEMUA TRIWULAN' : filterTriwulan.toUpperCase()
+  const tahunLabel = filterTahun === 'Semua'
+    ? (() => {
+        const set = new Set(recap.map((r) => String(r.rencana.tahun_anggaran)))
+        const list = [...set].filter((t) => t && t !== 'undefined').sort((a, b) => Number(b) - Number(a))
+        return list[0] ?? '—'
+      })()
+    : filterTahun
+  const docTitle = 'LAPORAN CAPAIAN KINERJA'
+  const docSub1 = `TRIWULAN ${triwulanLabel.replace('TW ', '')} (TARGET ${summary.targetTw}%)`
+  const docSub2 = `TAHUN ${tahunLabel}`
+  const docSub3 = seksiNama.toUpperCase()
+
+  const persenCellText = (row) => {
+    if (row.persen === null) return '-'
+    if (row.rencana.satuan === 'Persen') return `${row.persen.toFixed(2)}%`
+    return Number.isInteger(row.persen) ? String(row.persen) : row.persen.toFixed(2)
+  }
+
+  const keteranganText = (row) => {
+    if (row.latestKendala) return row.latestKendala
+    return row.entries.length > 0 ? 'Tidak ada kendala dilaporkan seksi.' : 'Belum ada realisasi.'
+  }
+
+  // ---------- Unduh Excel (.xls via HTML table, pola Laporan Organisasi) ----------
+  const handleExportExcel = useCallback(() => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const head = ['No', 'SK', 'No IKSK', 'IKSK', 'Target Tahunan', 'Anggaran', '% Realisasi Target', 'Realisasi Anggaran', '% Capaian Kinerja', 'Keterangan', 'Bukti Dukung']
+      const bodyRows = recap.map((row, idx) => ([
+        idx + 1,
+        row.sk ? `${row.sk.nomor}. ${row.sk.uraian}` : 'SK terhapus',
+        ikskNumber(row.iksk),
+        `${row.iksk?.uraian ?? 'IKSK terhapus'} (Rencana: ${row.rencana.rencana_aksi} • Target: ${row.rencana.target_kinerja})`,
+        row.iksk?.target_tahunan ?? '-',
+        row.rencana.anggaran === null ? '-' : Number(row.rencana.anggaran),
+        row.persen === null ? '-' : (row.rencana.satuan === 'Persen' ? Number(row.persen.toFixed(2)) : (Number.isInteger(row.persen) ? row.persen : Number(row.persen.toFixed(2)))),
+        row.totalAnggaran === null ? '-' : row.totalAnggaran,
+        row.capaian === null ? '-' : Number(row.capaian.toFixed(2)),
+        keteranganText(row),
+        row.bukti.length > 0 ? `${row.bukti.length} dokumen` : '-',
+      ]))
+      const tds = (cells, tag) => `<tr>${cells.map((c) => `<${tag}>${escapeHtml(c)}</${tag}>`).join('')}</tr>`
+      const html = [
+        '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body>',
+        `<h2 style="text-align:center">${escapeHtml(docTitle)}</h2>`,
+        `<h3 style="text-align:center">${escapeHtml(docSub1)}</h3>`,
+        `<h3 style="text-align:center">${escapeHtml(docSub2)}</h3>`,
+        `<h3 style="text-align:center">${escapeHtml(docSub3)}</h3>`,
+        '<table border="1">',
+        tds(head, 'th'),
+        ...bodyRows.map((cells) => tds(cells, 'td')),
+        tds(['', '', '', '', '', '', '', '', '', '', ''], 'td'),
+        `<tr><td colspan="11"><b>RINGKASAN SEKSI — ${escapeHtml(docSub1)} • ${escapeHtml(docSub2)}</b></td></tr>`,
+        tds(['Jumlah rata-rata capaian kinerja seksi', summary.rataCapaian === null ? '-' : `${summary.rataCapaian.toFixed(2)}%`, '', '', '', '', '', '', '', '', ''], 'td'),
+        tds([`% capaian seksi ((rata-rata / target triwulan ${summary.targetTw}%) * 100)`, summary.persenCapaianTw === null ? '-' : `${summary.persenCapaianTw.toFixed(2)}%`, '', '', '', '', '', '', '', '', ''], 'td'),
+        tds(['Jumlah anggaran', formatRupiah(summary.totalAnggaranRencana), '', '', '', '', '', '', '', '', ''], 'td'),
+        tds(['Jumlah realisasi anggaran', formatRupiah(summary.totalRealisasiAnggaran), '', '', '', '', '', '', '', '', ''], 'td'),
+        tds(['Persentase realisasi anggaran', summary.persenRealisasiAnggaran === null ? '-' : `${summary.persenRealisasiAnggaran.toFixed(2)}%`, '', '', '', '', '', '', '', '', ''], 'td'),
+        '</table></body></html>',
+      ].join('')
+      const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const safeTw = filterTriwulan === 'Semua' ? 'Semua' : filterTriwulan.replace(/\s+/g, '')
+      const safeSeksi = docSub3.replace(/[^A-Z0-9]+/gi, '_').slice(0, 40)
+      a.href = url
+      a.download = `Laporan_Capaian_Kinerja_${safeSeksi}_${safeTw}_${tahunLabel}.xls`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }, [exporting, recap, ikskNumber, docTitle, docSub1, docSub2, docSub3, summary, filterTriwulan, tahunLabel])
+
+  // ---------- Cetak laporan (dokumen print -> simpan sebagai PDF) ----------
+  const handlePrintPdf = useCallback(() => {
+    const win = window.open('', '_blank', 'width=1100,height=800')
+    if (!win) return
+    const head = ['No', 'SK', 'No IKSK', 'IKSK', 'Target Tahunan', 'Anggaran', '% Realisasi Target', 'Realisasi Anggaran', '% Capaian Kinerja', 'Keterangan', 'Bukti']
+    const bodyHtml = recap.map((row, idx) => (
+      `<tr>
+        <td>${idx + 1}</td>
+        <td>${row.sk ? `<b>${escapeHtml(row.sk.nomor)}.</b> ${escapeHtml(row.sk.uraian)}` : 'SK terhapus'}</td>
+        <td><b>${escapeHtml(ikskNumber(row.iksk))}</b></td>
+        <td>${escapeHtml(row.iksk?.uraian ?? 'IKSK terhapus')}<br><small>Rencana: ${escapeHtml(row.rencana.rencana_aksi)} • Target: ${escapeHtml(row.rencana.target_kinerja)}</small></td>
+        <td><b>${escapeHtml(row.iksk?.target_tahunan ?? '-')}</b></td>
+        <td>${escapeHtml(formatRupiah(row.rencana.anggaran))}</td>
+        <td><b>${escapeHtml(persenCellText(row))}</b></td>
+        <td>${escapeHtml(row.totalAnggaran === null ? '-' : formatRupiah(row.totalAnggaran))}</td>
+        <td><b>${row.capaian === null ? '-' : `${row.capaian.toFixed(2)}%`}</b></td>
+        <td>${escapeHtml(keteranganText(row))}</td>
+        <td style="text-align:center">${row.bukti.length > 0 ? `${row.bukti.length} dok` : '-'}</td>
+      </tr>`
+    )).join('')
+    const summaryHtml = `
+      <tr><td colspan="11" style="background:#eee"><b>RINGKASAN SEKSI</b></td></tr>
+      <tr><td colspan="5"><b>Jumlah rata-rata capaian kinerja seksi</b></td><td colspan="6"><b>${summary.rataCapaian === null ? '-' : `${summary.rataCapaian.toFixed(2)}%`}</b></td></tr>
+      <tr><td colspan="5"><b>% capaian seksi ((rata-rata / target triwulan ${summary.targetTw}%) × 100)</b></td><td colspan="6"><b>${summary.persenCapaianTw === null ? '-' : `${summary.persenCapaianTw.toFixed(2)}%`}</b></td></tr>
+      <tr><td colspan="5"><b>Jumlah anggaran</b></td><td colspan="6"><b>${escapeHtml(formatRupiah(summary.totalAnggaranRencana))}</b></td></tr>
+      <tr><td colspan="5"><b>Jumlah realisasi anggaran</b></td><td colspan="6"><b>${escapeHtml(formatRupiah(summary.totalRealisasiAnggaran))}</b></td></tr>
+      <tr><td colspan="5"><b>Persentase realisasi anggaran</b></td><td colspan="6"><b>${summary.persenRealisasiAnggaran === null ? '-' : `${summary.persenRealisasiAnggaran.toFixed(2)}%`}</b></td></tr>`
+    win.document.write(`<!DOCTYPE html><html><head><title>${escapeHtml(docTitle)} - ${escapeHtml(docSub1)} - ${escapeHtml(docSub2)}</title>
+      <style>
+        body { font-family: Arial, sans-serif; color: #111; padding: 24px; }
+        h1, h2, h3 { text-align: center; margin: 2px 0; }
+        h1 { font-size: 20px; } h2 { font-size: 15px; } h3 { font-size: 13px; font-weight: normal; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px; }
+        th, td { border: 1px solid #333; padding: 6px; vertical-align: top; text-align: left; }
+        th { background: #f0f0f0; }
+        small { color: #555; }
+        .meta { text-align:center; color:#444; font-size:11px; margin-top:8px; }
+        @media print { body { padding: 0; } }
+      </style></head><body>
+      <h1>${escapeHtml(docTitle)}</h1>
+      <h2>${escapeHtml(docSub1)}</h2>
+      <h2>${escapeHtml(docSub2)}</h2>
+      <h3>${escapeHtml(docSub3)}</h3>
+      <p class="meta">${recap.length} rencana • ${summary.terealisasi} terealisasi • Rumus sama dengan Laporan Kinerja Organisasi.</p>
+      <table><thead><tr>${head.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+      <tbody>${bodyHtml || `<tr><td colspan="11" style="text-align:center">Belum ada data.</td></tr>`}${summaryHtml}</tbody></table>
+      <script>window.onload = () => { window.focus(); window.print(); }${'<'}${'/script>'}
+      </body></html>`)
+    win.document.close()
+  }, [recap, ikskNumber, summary, docTitle, docSub1, docSub2, docSub3])
 
   const satuanBadge = (satuan) => {
     if (satuan === 'Persen') return 'bg-primary-fixed/25 text-primary'
@@ -244,14 +390,26 @@ function LaporanKinerjaSeksi({ currentUser }) {
               {recap.length} Rencana
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-primary px-space-md font-body-md text-body-md font-bold text-on-primary shadow-sm hover:bg-primary-container transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">print</span>
-            Cetak Laporan
-          </button>
+          <div className="flex flex-wrap items-center gap-space-xs">
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={exporting || loading || recap.length === 0}
+              className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant bg-surface px-space-md font-body-md text-body-md font-bold text-primary hover:bg-surface-container transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">table_view</span>
+              {exporting ? 'Mengunduh...' : 'Unduh Excel'}
+            </button>
+            <button
+              type="button"
+              onClick={handlePrintPdf}
+              disabled={loading || recap.length === 0}
+              className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-primary px-space-md font-body-md text-body-md font-bold text-on-primary shadow-sm hover:bg-primary-container transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+              Cetak / PDF
+            </button>
+          </div>
         </div>
         <p className="font-body-md text-body-md text-secondary max-w-3xl">
           Rekap otomatis dari Rencana Aksi {userUnit ? <span className="font-bold text-on-surface">{userUnit.nama_unit}</span> : 'seksi Anda'} dan
