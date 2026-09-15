@@ -4,7 +4,7 @@ import kemenagLogo from '../assets/kemenag.svg'
 
 // Opsi peran persis seperti modal pada mockup portal publik.
 const portalRoles = [
-  { label: 'Pegawai / Pengisi Laporan', allowed: ['Operator Unit', 'Viewer / Auditor'] },
+  { label: '------------', allowed: ['Operator Unit', 'Viewer / Auditor'] },
   { label: 'Kepala Seksi / Pejabat Penilai', allowed: ['Kepala Satker'] },
   { label: 'Admin Organisasi / Perencana', allowed: ['Admin Organisasi'] },
 ]
@@ -218,7 +218,7 @@ function LoginPage({ onLogin }) {
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
             <button
               type="button"
-              onClick={() => focusForm('Pegawai / Pengisi Laporan')}
+              onClick={() => focusForm('------------')}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs md:text-sm font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/25 backdrop-blur-md transition-all duration-200 shadow-sm hover:shadow active:scale-95"
             >
               <svg className="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">

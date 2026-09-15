@@ -55,6 +55,23 @@ export function triwulanOf(dateStr) {
 
 export const TW_OPTIONS = ['TW I', 'TW II', 'TW III', 'TW IV']
 
+export function twIndex(tw) {
+  const norm = normalizeTw(tw) ?? tw
+  const i = TW_OPTIONS.indexOf(norm)
+  return i >= 0 ? i + 1 : 0
+}
+
+// Cek apakah tanggal kegiatan masuk dalam filter triwulan.
+// Bila kumulatif=true, triwulan sebelumnya ikut terhitung
+// (mis. filter TW II mencakup realisasi TW I + TW II).
+export function isTwMasuk(tanggalKegiatan, filterTriwulan, kumulatif = false) {
+  if (!filterTriwulan || filterTriwulan === 'Semua') return true
+  const twEntry = triwulanOf(tanggalKegiatan)
+  if (!twEntry) return false
+  if (!kumulatif) return twEntry === filterTriwulan
+  return twIndex(twEntry) <= twIndex(filterTriwulan)
+}
+
 // Target triwulan untuk % capaian kinerja organisasi:
 // TW I = 25%, TW II = 50%, TW III = 75%, TW IV = 100%.
 export const TW_TARGET_PERSEN = {
@@ -118,6 +135,7 @@ export function computeOrganisasi({
   realisasiRows = [],
   filterTahun = 'Semua',
   filterTriwulan = 'Semua',
+  kumulatif = false,
 }) {
   const skById = Object.fromEntries(skList.map((s) => [s.id, s]))
   const ikskById = Object.fromEntries(ikskList.map((i) => [i.id, i]))
@@ -126,7 +144,7 @@ export function computeOrganisasi({
 
   const inTahunRencana = (t) => filterTahun === 'Semua' || String(t) === String(filterTahun)
   const inTahunRealisasi = (t) => filterTahun === 'Semua' || String(t) === String(filterTahun)
-  const inTw = (tgl) => filterTriwulan === 'Semua' || triwulanOf(tgl) === filterTriwulan
+  const inTw = (tgl) => isTwMasuk(tgl, filterTriwulan, kumulatif)
 
   // Hitung % realisasi per rencana dulu (rumus seksi), lalu kelompokkan per IKSK.
   const perRencana = rencanaRows
@@ -290,12 +308,13 @@ export function computePerSeksi({
   ikskList = [],
   filterTahun = 'Semua',
   filterTriwulan = 'Semua',
+  kumulatif = false,
 }) {
   const ikskById = Object.fromEntries(ikskList.map((i) => [i.id, i]))
   const cascadingById = Object.fromEntries(cascadingRows.map((c) => [c.id, c]))
 
   const inTahun = (t) => filterTahun === 'Semua' || String(t) === String(filterTahun)
-  const inTw = (tgl) => filterTriwulan === 'Semua' || triwulanOf(tgl) === filterTriwulan
+  const inTw = (tgl) => isTwMasuk(tgl, filterTriwulan, kumulatif)
 
   const rencanaOfUnit = new Map()
   for (const r of rencanaRows) {

@@ -278,7 +278,7 @@ function PublicPortal({ onLogin }) {
   const portalTargetTw = TW_TARGET_PERSEN[portalTw] ?? 100
   let portalFooter = null
   try {
-    portalFooter = computeOrganisasi({ ...orgDataset, filterTahun: portalTahun, filterTriwulan: portalTw }).footer
+    portalFooter = computeOrganisasi({ ...orgDataset, filterTahun: portalTahun, filterTriwulan: portalTw, kumulatif: true }).footer
   } catch {
     portalFooter = null
   }
@@ -297,20 +297,24 @@ function PublicPortal({ onLogin }) {
       ikskList: orgDataset.ikskList,
       filterTahun: portalTahun,
       filterTriwulan: portalTw,
+      // Nilai kumulatif: TW II mencakup TW I + TW II, dst.
+      kumulatif: true,
     })
   } catch {
     seksiReal = []
   }
-  const realChartRows = seksiReal
-    .filter((g) => g.rataCapaian !== null)
-    .map((g, i) => ({
-      unit: shortUnitName(g.unit.nama_unit),
-      full: g.unit.nama_unit,
-      capaian: Number(g.rataCapaian.toFixed(2)),
-      rencana: g.rencana,
-      terealisasi: g.terealisasi,
-      color: CHART_COLORS[i % CHART_COLORS.length],
-    }))
+  // Tampilkan seluruh seksi walau capaiannya masih kosong (gunakan 0%).
+  const realChartRows = seksiReal.map((g, i) => ({
+    unit: shortUnitName(g.unit.nama_unit),
+    full: g.unit.nama_unit,
+    capaian: g.rataCapaian === null || g.rataCapaian === undefined
+      ? 0
+      : Number(g.rataCapaian.toFixed(2)),
+    rencana: g.rencana,
+    terealisasi: g.terealisasi,
+    isEmpty: g.rataCapaian === null || g.rataCapaian === undefined,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }))
   const hasChartReal = realChartRows.length > 0
   const chartRows = hasChartReal ? realChartRows : triwulanData[triwulan]
   const rankedUnits = [...chartRows].sort((a, b) => b.capaian - a.capaian)
@@ -319,7 +323,7 @@ function PublicPortal({ onLogin }) {
   let ikskRankRows = []
   try {
     const skById = Object.fromEntries((orgDataset.skList ?? []).map((s) => [s.id, s]))
-    const org = computeOrganisasi({ ...orgDataset, filterTahun: portalTahun, filterTriwulan: portalTw })
+    const org = computeOrganisasi({ ...orgDataset, filterTahun: portalTahun, filterTriwulan: portalTw, kumulatif: true })
     ikskRankRows = org.rows
       .map((r) => ({
         id: r.iksk.id,
@@ -703,7 +707,7 @@ function PublicPortal({ onLogin }) {
 
           <div className="border-t border-slate-100 pt-3 mt-2">
             <p className="text-[11px] text-slate-400 font-medium">
-              Garis putus-putus menandai ambang 100% (Standar Capping System 0%–120%)
+              Nilai kumulatif s.d. triwulan aktif (mis. TW II = TW I + TW II) • Seluruh seksi ditampilkan (kosong = 0%) • Garis putus-putus menandai ambang 100% (Standar Capping System 0%–120%)
             </p>
           </div>
         </section>
@@ -762,7 +766,7 @@ function PublicPortal({ onLogin }) {
               </table>
               <p className="mt-3 text-[11px] text-slate-400">
                 {hasChartReal
-                  ? `Peringkat mengikuti triwulan aktif pada grafik di atas · Data real TA ${portalTahun} (rata-rata capaian per seksi, rumus Dashboard Admin).`
+                  ? `Peringkat mengikuti triwulan aktif pada grafik di atas (kumulatif s.d. ${portalTw}) · Data real TA ${portalTahun} (rata-rata capaian per seksi, rumus Dashboard Admin).`
                   : 'Peringkat mengikuti triwulan aktif pada grafik di atas · Data simulasi.'}
               </p>
             </div>

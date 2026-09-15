@@ -3,9 +3,9 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 // Peran sesuai mockup portal; allowed = nilai `peran` di master_users.
 const portalRoles = [
-  { label: 'Pegawai / Pengisi Laporan', allowed: ['Operator Unit', 'Viewer / Auditor'] },
-  { label: 'Kepala Seksi / Pejabat Penilai', allowed: ['Kepala Satker'] },
-  { label: 'Admin Organisasi / Perencana', allowed: ['Admin Organisasi'] },
+  { label: '------------', allowed: ['Operator Unit', 'Viewer / Auditor'] },
+  { label: 'Kepala Seksi / Unit Kerja', allowed: ['Kepala Satker'] },
+  { label: 'Admin Organisasi', allowed: ['Admin Organisasi'] },
 ]
 
 const toProfile = (row) => ({
