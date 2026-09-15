@@ -439,10 +439,10 @@ function PublicPortal({ onLogin }) {
             <span>Rekapitulasi Capaian Kinerja Terbuka — Tahun 2026</span>
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-[40px] font-extrabold text-white tracking-tight leading-tight">
-            Transparansi &amp; Akuntabilitas Kinerja Berjenjang
+            Transparansi &amp; Akuntabilitas Kinerja
           </h1>
           <p className="mt-2 text-emerald-100/90 text-sm sm:text-base max-w-3xl leading-relaxed font-normal">
-            Perhitungan kinerja pegawai terakumulasi otomatis ke tingkat Seksi/Satker hingga Capaian Kinerja Organisasi, sesuai KMA Nomor 1807 Tahun 2025.
+            Mewujudkan Pemerintahan yang berorientasi hasil untuk pelayanan publik yang lebih baik dilingkungan Kankemenag Kabupaten Lebak, sesuai Perpres Nomor 29 Tahun 2014 & KMA Nomor 1807 Tahun 2025.
           </p>
         </section>
 
