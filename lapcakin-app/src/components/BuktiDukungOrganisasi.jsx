@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { fetchBuktiMap } from '../lib/buktiFiles'
 import { BuktiViewer } from './RealisasiKinerjaForm'
 
 function formatSize(bytes) {
@@ -109,6 +110,13 @@ function BuktiDukungOrganisasi() {
   const [filterJenis, setFilterJenis] = useState('Semua')
   const [selectedFolderKey, setSelectedFolderKey] = useState('all')
   const [viewerRow, setViewerRow] = useState(null)
+  const [viewerFiles, setViewerFiles] = useState([])
+  const [buktiMap, setBuktiMap] = useState(new Map())
+
+  const openViewer = (entry) => {
+    setViewerRow(entry)
+    setViewerFiles(entry._files ?? [])
+  }
   const [downloadingId, setDownloadingId] = useState(null)
   const [downloadingFolder, setDownloadingFolder] = useState(false)
 
@@ -142,6 +150,11 @@ function BuktiDukungOrganisasi() {
       setCascadingRows(cascRes.data ?? [])
       setRencanaRows(rencanaRes.data ?? [])
       setRealisasiRows(realRes.data ?? [])
+      try {
+        setBuktiMap(await fetchBuktiMap((realRes.data ?? []).map((r) => r.id)))
+      } catch {
+        setBuktiMap(new Map())
+      }
     }
     setLoading(false)
   }, [])
@@ -152,7 +165,7 @@ function BuktiDukungOrganisasi() {
 
   useEffect(() => {
     const handleKey = (event) => {
-      if (event.key === 'Escape' && viewerRow) setViewerRow(null)
+      if (event.key === 'Escape' && viewerRow) { setViewerRow(null); setViewerFiles([]) }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
@@ -180,16 +193,34 @@ function BuktiDukungOrganisasi() {
     return [...set].filter((t) => t && t !== 'undefined').sort((a, b) => Number(b) - Number(a))
   }, [realisasiRows])
 
-  // Seluruh dokumen bukti dari semua seksi (yang berlampiran).
+  // Seluruh dokumen bukti dari semua seksi — satu baris per BERKAS
+  // (multi-dokumen), fallback ke kolom legacy bila tabel anak belum ada.
   const documents = useMemo(() => realisasiRows
-    .filter((e) => e.bukti_path)
-    .map((e) => {
+    .flatMap((e) => {
+      const files = buktiMap.get(e.id) ?? (e.bukti_path ? [{
+        id: `legacy-${e.id}`,
+        bukti_path: e.bukti_path,
+        bukti_nama: e.bukti_nama,
+        bukti_tipe: e.bukti_tipe,
+        bukti_size: e.bukti_size,
+      }] : [])
+      return files.map((f) => ({ parent: e, file: f }))
+    })
+    .map(({ parent: e, file: f }) => {
       const rencana = rencanaById[e.rencana_aksi_id] || null
       const cascading = rencana ? cascadingById[rencana.cascading_id] || null : null
       const iksk = cascading ? ikskById[cascading.iksk_id] || null : null
       const sk = iksk ? skById[iksk.sk_id] || null : null
       const unit = cascading ? unitById[cascading.unit_kerja_id] || null : null
-      return { entry: e, rencana, cascading, iksk, sk, unit }
+      const filesOfParent = buktiMap.get(e.id) ?? (e.bukti_path ? [{
+        id: `legacy-${e.id}`,
+        bukti_path: e.bukti_path,
+        bukti_nama: e.bukti_nama,
+        bukti_tipe: e.bukti_tipe,
+        bukti_size: e.bukti_size,
+      }] : [])
+      const entry = { ...e, bukti_path: f.bukti_path, bukti_nama: f.bukti_nama, bukti_tipe: f.bukti_tipe, bukti_size: f.bukti_size, _files: filesOfParent, _fileId: f.id }
+      return { entry, rencana, cascading, iksk, sk, unit }
     })
     .filter((d) => {
       if (filterTahun !== 'Semua' && String(d.entry.tahun_anggaran) !== String(filterTahun)) return false
@@ -197,7 +228,7 @@ function BuktiDukungOrganisasi() {
       if (filterUnit !== 'Semua' && d.cascading?.unit_kerja_id !== filterUnit) return false
       if (filterJenis !== 'Semua' && docKind(d.entry.bukti_nama) !== filterJenis) return false
       return true
-    }), [realisasiRows, rencanaById, cascadingById, ikskById, skById, unitById, filterTahun, filterTriwulan, filterUnit, filterJenis])
+    }), [realisasiRows, rencanaById, cascadingById, ikskById, skById, unitById, filterTahun, filterTriwulan, filterUnit, filterJenis, buktiMap])
 
   // Kelompokkan per folder nomor IKSK.
   const folders = useMemo(() => {
@@ -245,7 +276,7 @@ function BuktiDukungOrganisasi() {
 
   const handleDownloadOne = async (entry) => {
     if (downloadingId) return
-    setDownloadingId(entry.id)
+    setDownloadingId(entry._fileId ?? entry.id)
     setDownloadError('')
     try {
       await downloadSingle(entry, (err) => setDownloadError(`Gagal mengunduh ${entry.bukti_nama ?? 'dokumen'}: ${err.message ?? err}`))
@@ -553,9 +584,9 @@ function BuktiDukungOrganisasi() {
                 </tr>
               ) : visibleDocs.length > 0 ? visibleDocs.map((d, idx) => {
                 const meta = docIcon(d.entry.bukti_nama)
-                const isDownloading = downloadingId === d.entry.id
+                const isDownloading = downloadingId === (d.entry._fileId ?? d.entry.id)
                 return (
-                  <tr key={d.entry.id} className="border-b border-surface-container last:border-0 hover:bg-surface-container-low/30 transition-colors">
+                  <tr key={d.entry._fileId ?? d.entry.id} className="border-b border-surface-container last:border-0 hover:bg-surface-container-low/30 transition-colors">
                     <td className="px-space-md py-space-sm font-body-sm text-body-sm text-secondary">{idx + 1}</td>
                     <td className="px-space-md py-space-sm">
                       <div className="flex items-center gap-space-sm">
@@ -595,7 +626,7 @@ function BuktiDukungOrganisasi() {
                     <td className="px-space-md py-space-sm">
                       <div className="flex items-center justify-center gap-space-2xs">
                         <button
-                          type="button" onClick={() => setViewerRow(d.entry)}
+                          type="button" onClick={() => openViewer(d.entry)}
                           className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg border border-outline-variant text-primary hover:bg-surface-container transition-colors"
                           title={`Pratinjau ${d.entry.bukti_nama || 'bukti dukung'}`}
                           aria-label="Pratinjau bukti dukung"
@@ -642,7 +673,7 @@ function BuktiDukungOrganisasi() {
       </div>
 
       {viewerRow && (
-        <BuktiViewer row={viewerRow} onClose={() => setViewerRow(null)} />
+        <BuktiViewer row={viewerRow} files={viewerFiles} onClose={() => { setViewerRow(null); setViewerFiles([]) }} />
       )}
     </div>
   )

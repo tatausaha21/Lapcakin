@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { deleteFromDrive } from '../lib/driveUpload'
+import { uploadMultipleBukti, cleanupUploaded, fetchBuktiMap, deleteBuktiRow } from '../lib/buktiFiles'
 
 // ---------- Rumus % realisasi target ----------
 // Ambil angka pertama dari teks ("50%" -> 50, "1:5" -> 1, "Baik" -> NaN).
@@ -76,14 +78,6 @@ function validateFile(file) {
   return ''
 }
 
-async function uploadBukti(file, tahun) {
-  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const path = `${tahun}/${Date.now()}_${safe}`
-  const { error } = await supabase.storage.from('bukti-dukung').upload(path, file)
-  if (error) throw error
-  return { bukti_path: path, bukti_nama: file.name, bukti_tipe: file.type || '-', bukti_size: file.size }
-}
-
 function buktiUrl(path) {
   if (!path) return '#'
   return supabase.storage.from('bukti-dukung').getPublicUrl(path).data.publicUrl
@@ -104,9 +98,14 @@ function buktiKind(nama) {
 }
 
 // ---------- Modal viewer dokumen bukti dukung (dipakai ulang di Laporan) ----------
-export function BuktiViewer({ row, onClose }) {
-  const url = buktiUrl(row.bukti_path)
-  const kind = buktiKind(row.bukti_nama)
+// Mendukung multi-dokumen: teruskan `files` (array baris lampiran) bila ada,
+// fallback ke `row` tunggal untuk kompatibilitas mundur.
+export function BuktiViewer({ row, files, onClose }) {
+  const [idx, setIdx] = useState(0)
+  const list = Array.isArray(files) && files.length > 0 ? files : (row ? [row] : [])
+  const active = list[Math.min(idx, Math.max(list.length - 1, 0))] || {}
+  const url = buktiUrl(active.bukti_path)
+  const kind = buktiKind(active.bukti_nama)
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-space-md" onClick={onClose} role="presentation">
       <div
@@ -123,10 +122,11 @@ export function BuktiViewer({ row, onClose }) {
             </div>
             <div className="min-w-0">
               <h2 id="bukti-viewer-title" className="font-title-sm text-title-sm font-bold text-on-surface truncate">
-                {row.bukti_nama || 'Bukti Dukung'}
+                {active.bukti_nama || 'Bukti Dukung'}
               </h2>
               <p className="font-label-sm text-label-sm text-secondary">
-                {formatSize(row.bukti_size)}{row.bukti_tipe ? ` • ${row.bukti_tipe}` : ''}
+                {formatSize(active.bukti_size)}{active.bukti_tipe ? ` • ${active.bukti_tipe}` : ''}
+                {list.length > 1 ? ` • Dokumen ${idx + 1} dari ${list.length}` : ''}
               </p>
             </div>
           </div>
@@ -138,9 +138,9 @@ export function BuktiViewer({ row, onClose }) {
 
         <div className="grow overflow-auto bg-surface-container-low/40 min-h-[300px] flex flex-col">
           {kind === 'image' ? (
-            <img src={url} alt={row.bukti_nama || 'Bukti dukung'} className="m-auto max-h-[62vh] max-w-full object-contain rounded-lg shadow-sm" />
+            <img src={url} alt={active.bukti_nama || 'Bukti dukung'} className="m-auto max-h-[62vh] max-w-full object-contain rounded-lg shadow-sm" />
           ) : kind === 'pdf' ? (
-            <iframe src={url} title={row.bukti_nama || 'Bukti PDF'} className="w-full h-[62vh] bg-white" />
+            <iframe src={url} title={active.bukti_nama || 'Bukti PDF'} className="w-full h-[62vh] bg-white" />
           ) : (
             <div className="m-auto flex flex-col items-center text-center p-space-xl gap-space-xs">
               <span className="material-symbols-outlined text-[56px] text-secondary">table_chart</span>
@@ -152,7 +152,23 @@ export function BuktiViewer({ row, onClose }) {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-space-sm border-t border-surface-container bg-surface-container-low/40 px-space-md py-space-md shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border-t border-surface-container bg-surface-container-low/40 px-space-md py-space-md shrink-0">
+          {list.length > 1 ? (
+            <div className="flex items-center gap-space-2xs">
+              <button type="button" onClick={() => setIdx((i) => (i - 1 + list.length) % list.length)}
+                className="inline-flex items-center justify-center h-[42px] px-space-sm rounded-lg border border-outline-variant font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors"
+                aria-label="Dokumen sebelumnya">
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              <span className="font-label-md text-label-md font-bold text-secondary min-w-[90px] text-center">{idx + 1} / {list.length}</span>
+              <button type="button" onClick={() => setIdx((i) => (i + 1) % list.length)}
+                className="inline-flex items-center justify-center h-[42px] px-space-sm rounded-lg border border-outline-variant font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors"
+                aria-label="Dokumen berikutnya">
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          ) : <span />}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-space-sm">
           <button type="button" onClick={onClose}
             className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors">
             <span className="material-symbols-outlined text-[18px]">close</span> Tutup
@@ -161,6 +177,7 @@ export function BuktiViewer({ row, onClose }) {
             className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-primary px-space-md font-body-md text-body-md font-bold text-on-primary shadow-sm hover:bg-primary-container transition-colors">
             <span className="material-symbols-outlined text-[18px]">download</span> Unduh Dokumen
           </a>
+          </div>
         </div>
       </div>
     </div>
@@ -175,18 +192,28 @@ function RealisasiWizard({
 }) {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(initial)
-  const [file, setFile] = useState(null)
+  const [newFiles, setNewFiles] = useState([])
+  const [removedIds, setRemovedIds] = useState([])
   const [errors, setErrors] = useState({})
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef(null)
 
+  const existingList = useMemo(
+    () => (initial.existingBuktiList ?? []).filter((b) => !removedIds.includes(b.id)),
+    [initial.existingBuktiList, removedIds],
+  )
+
   const pickFile = () => fileInputRef.current?.click()
 
-  const chooseFile = (f) => {
-    setFile(f)
+  const chooseFiles = (fileList) => {
+    const picked = [...fileList].filter(Boolean)
+    if (picked.length === 0) return
+    setNewFiles((cur) => [...cur, ...picked])
     setDragOver(false)
     if (errors.bukti) setErrors((c) => ({ ...c, bukti: '' }))
   }
+
+  const removeNewFile = (index) => setNewFiles((cur) => cur.filter((_, i) => i !== index))
 
   const update = (field, value) => {
     setForm((c) => ({ ...c, [field]: value }))
@@ -220,12 +247,16 @@ function RealisasiWizard({
       }
     }
     if (s === 2) {
-      if (file) {
-        const msg = validateFile(file)
-        if (msg) next.bukti = msg
-      } else if (!initial.existingBukti) {
-        // Bukti dukung wajib: berkas baru wajib dipilih bila belum ada lampiran.
-        next.bukti = 'Bukti dukung wajib diunggah (PDF / Excel / JPG / PNG).'
+      for (const f of newFiles) {
+        const msg = validateFile(f)
+        if (msg) {
+          next.bukti = `${f.name}: ${msg}`
+          break
+        }
+      }
+      if (!next.bukti && newFiles.length === 0 && existingList.length === 0) {
+        // Bukti dukung wajib: minimal satu dokumen (lama dipertahankan / baru).
+        next.bukti = 'Bukti dukung wajib diunggah (PDF / Excel / JPG / PNG) — bisa lebih dari satu dokumen.'
       }
     }
     return next
@@ -263,7 +294,7 @@ function RealisasiWizard({
       else setStep(2)
       return
     }
-    onSubmit(form, file)
+    onSubmit(form, { newFiles, removedIds })
   }
 
   const inputClass = (hasError) =>
@@ -417,15 +448,27 @@ function RealisasiWizard({
                 <div className="flex flex-col gap-space-2xs">
                   <span className="font-label-md text-label-md font-bold text-on-surface">
                     Upload Bukti Dukung <span className="text-error">*</span>{' '}
-                    <span className="font-label-sm font-semibold text-secondary">(PDF / Excel / JPG / PNG, maks. 10 MB — wajib)</span>
+                    <span className="font-label-sm font-semibold text-secondary">(PDF / Excel / JPG / PNG, maks. 10 MB per berkas — boleh lebih dari satu)</span>
                   </span>
-                  {initial.existingBukti && !file && (
-                    <div className="flex items-center gap-space-sm rounded-xl bg-surface-container-low px-space-sm py-space-sm font-body-sm text-body-sm">
-                      <span className="material-symbols-outlined text-primary-container text-[22px]">description</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-on-surface truncate">{initial.existingBukti.nama}</div>
-                        <div className="text-secondary">{formatSize(initial.existingBukti.size)} — tetap dipakai bila tidak memilih berkas baru</div>
-                      </div>
+                  {existingList.length > 0 && (
+                    <div className="flex flex-col gap-space-2xs">
+                      <span className="font-label-sm text-label-sm font-bold text-secondary">
+                        Dokumen tersimpan ({existingList.length}) — tetap dipakai kecuali dihapus:
+                      </span>
+                      {existingList.map((b) => (
+                        <div key={b.id} className="flex items-center gap-space-sm rounded-xl bg-surface-container-low px-space-sm py-space-sm font-body-sm text-body-sm">
+                          <span className="material-symbols-outlined text-primary-container text-[22px]">description</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-on-surface truncate">{b.bukti_nama}</div>
+                            <div className="text-secondary">{formatSize(b.bukti_size)}</div>
+                          </div>
+                          <button type="button" onClick={() => setRemovedIds((cur) => [...cur, b.id])}
+                            className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg text-error hover:bg-error-container transition-colors shrink-0"
+                            title={`Hapus ${b.bukti_nama}`} aria-label={`Hapus ${b.bukti_nama}`}>
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
                   <div
@@ -436,8 +479,7 @@ function RealisasiWizard({
                     onDragLeave={() => setDragOver(false)}
                     onDrop={(e) => {
                       e.preventDefault()
-                      const f = e.dataTransfer.files?.[0] ?? null
-                      if (f) chooseFile(f)
+                      if (e.dataTransfer.files?.length) chooseFiles(e.dataTransfer.files)
                     }}
                     className={`p-space-lg rounded-xl transition-all flex flex-col items-center justify-center text-center cursor-pointer shadow-inner ${
                       dragOver ? 'bg-primary-fixed/25 ring-2 ring-primary' : 'bg-surface-container-low hover:bg-surface-container'
@@ -447,27 +489,38 @@ function RealisasiWizard({
                       <span className="material-symbols-outlined text-[28px]">file_upload</span>
                     </div>
                     <span className="font-title-sm text-title-sm font-bold text-on-surface break-all">
-                      {file ? file.name : 'Klik untuk memilih berkas dari perangkat'}
+                      {newFiles.length > 0 ? `${newFiles.length} berkas baru dipilih` : 'Klik untuk memilih berkas dari perangkat'}
                     </span>
                     <span className="font-body-sm text-body-sm text-secondary mt-1">
-                      {file ? `${formatSize(file.size)} — klik / seret berkas lain untuk mengganti` : 'atau seret & letakkan berkas di sini — PDF, XLS/XLSX, JPG, JPEG, PNG'}
+                      {newFiles.length > 0 ? 'klik / seret lagi untuk tambah dokumen' : 'atau seret & letakkan berkas di sini — bisa banyak sekaligus'}
                     </span>
                     <span className="mt-space-sm inline-flex items-center gap-space-2xs px-space-md py-space-2xs rounded-lg bg-primary text-on-primary font-label-md text-label-md font-bold shadow-sm">
                       <span className="material-symbols-outlined text-[18px]">folder_open</span>
-                      Pilih Dokumen
+                      {existingList.length > 0 ? 'Tambah Dokumen' : 'Pilih Dokumen'}
                     </span>
                   </div>
-                  <input ref={fileInputRef} type="file" accept={ACCEPT_ATTR} className="hidden"
+                  <input ref={fileInputRef} type="file" accept={ACCEPT_ATTR} multiple className="hidden"
                     onChange={(e) => {
-                      const f = e.target.files?.[0] ?? null
+                      if (e.target.files?.length) chooseFiles(e.target.files)
                       e.target.value = ''
-                      if (f) chooseFile(f)
                     }} />
-                  {file && (
-                    <button type="button" onClick={() => setFile(null)}
-                      className="self-start font-body-sm text-body-sm font-bold text-error hover:underline">
-                      Hapus berkas terpilih
-                    </button>
+                  {newFiles.length > 0 && (
+                    <div className="flex flex-col gap-space-2xs">
+                      {newFiles.map((f, i) => (
+                        <div key={`${f.name}-${f.size}-${i}`} className="flex items-center gap-space-sm rounded-xl border border-dashed border-primary/40 bg-primary-fixed/10 px-space-sm py-space-2xs font-body-sm text-body-sm">
+                          <span className="material-symbols-outlined text-primary text-[20px]">upload_file</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-on-surface truncate">{f.name}</div>
+                            <div className="text-secondary">{formatSize(f.size)}</div>
+                          </div>
+                          <button type="button" onClick={() => removeNewFile(i)}
+                            className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg text-error hover:bg-error-container transition-colors shrink-0"
+                            title={`Batalkan ${f.name}`} aria-label={`Batalkan ${f.name}`}>
+                            <span className="material-symbols-outlined text-[18px]">close</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                   {errors.bukti && <span className="font-label-sm text-label-sm text-error">{errors.bukti}</span>}
                   <span className="font-label-sm text-label-sm text-secondary">
@@ -536,8 +589,19 @@ function RealisasiKinerjaForm({ currentUser }) {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [viewerRow, setViewerRow] = useState(null)
+  const [viewerFiles, setViewerFiles] = useState([])
+  const [buktiMap, setBuktiMap] = useState(new Map())
+  const [attachRow, setAttachRow] = useState(null)
+  const [attachFiles, setAttachFiles] = useState([])
+  const [attaching, setAttaching] = useState(false)
+  const attachInputRef = useRef(null)
 
-  const isModalOpen = createOpen || editOpen || deleteTarget !== null || viewerRow !== null
+  const openViewer = (row) => {
+    setViewerRow(row)
+    setViewerFiles(buktiMap.get(row.id) ?? [])
+  }
+
+  const isModalOpen = createOpen || editOpen || deleteTarget !== null || viewerRow !== null || attachRow !== null
 
   // ---- READ ----
   const fetchAll = useCallback(async () => {
@@ -570,6 +634,12 @@ function RealisasiKinerjaForm({ currentUser }) {
       setCascadingRows(cascRes.data ?? [])
       setRencanaRows(rencanaRes.data ?? [])
       setRows(realRes.data ?? [])
+      // Lampiran multi-dokumen (fallback map kosong bila tabel belum dimigrasi).
+      try {
+        setBuktiMap(await fetchBuktiMap((realRes.data ?? []).map((r) => r.id)))
+      } catch {
+        setBuktiMap(new Map())
+      }
     }
     setLoading(false)
   }, [])
@@ -680,12 +750,16 @@ function RealisasiKinerjaForm({ currentUser }) {
     setCreateOpen(true)
   }
 
-  const handleSubmitCreate = async (form, file) => {
+  const handleSubmitCreate = async (form, { newFiles }) => {
     if (savingCreate) return
     const rencana = rencanaById[form.rencanaAksiId]
     const cascading = rencana ? cascadingById[rencana.cascading_id] : null
     if (!rencana || !cascading) {
       setFetchError('Rencana aksi yang dipilih tidak ditemukan. Muat ulang data.')
+      return
+    }
+    if (!newFiles || newFiles.length === 0) {
+      setFetchError('Bukti dukung wajib diunggah (minimal satu dokumen).')
       return
     }
     setSavingCreate(true)
@@ -701,24 +775,42 @@ function RealisasiKinerjaForm({ currentUser }) {
         realisasiToStore = Number.isInteger(acc) ? String(acc) : String(Number(acc.toFixed(2)))
         accumNote = ` (akumulasi ${prevTotal} + ${inputNum} = ${realisasiToStore})`
       }
-      // Bukti wajib: gagal unggah = gagal simpan (tidak ada data yatim).
-      const bukti = await uploadBukti(file, cascading.tahun_anggaran)
+      // Upload semua dokumen dulu; gagal unggah = gagal simpan (tidak ada data yatim).
+      const uploaded = await uploadMultipleBukti(newFiles, cascading.tahun_anggaran)
+      const first = uploaded[0]
       const payload = {
         rencana_aksi_id: form.rencanaAksiId,
         realisasi_kinerja: realisasiToStore,
         tanggal_kegiatan: form.tanggalKegiatan,
         realisasi_anggaran: form.realisasiAnggaran.trim() === '' ? null : Number(form.realisasiAnggaran),
         catatan_kendala: form.catatanKendala.trim() || null,
-        ...bukti,
+        bukti_path: first.bukti_path,
+        bukti_nama: first.bukti_nama,
+        bukti_tipe: first.bukti_tipe,
+        bukti_size: first.bukti_size,
+        ...(first.bukti_drive_id ? { bukti_drive_id: first.bukti_drive_id, bukti_drive_link: first.bukti_drive_link } : {}),
         tahun_anggaran: cascading.tahun_anggaran,
       }
       const { data, error } = await supabase.from('realisasi_kinerja').insert(payload).select().single()
       if (error) {
-        await supabase.storage.from('bukti-dukung').remove([bukti.bukti_path])
+        await cleanupUploaded(uploaded)
         throw error
       }
+      // Simpan seluruh dokumen ke tabel anak (abaikan bila tabel belum dimigrasi).
+      const childRows = uploaded.map((b) => ({ realisasi_id: data.id, ...b }))
+      const { data: insertedChildren, error: childError } = await supabase.from('realisasi_bukti').insert(childRows).select()
+      if (childError) {
+        if (childError.code === '42P01' || childError.code === 'PGRST205') {
+          await cleanupUploaded(uploaded)
+          await supabase.from('realisasi_kinerja').delete().eq('id', data.id)
+          throw new Error('Tabel realisasi_bukti belum ada. Jalankan supabase/realisasi_bukti_multi.sql di SQL Editor dulu.')
+        }
+        console.warn('[bukti] lampiran tambahan dilewati:', childError.message)
+      } else if (insertedChildren) {
+        setBuktiMap((cur) => new Map(cur).set(data.id, insertedChildren))
+      }
       setRows((cur) => [data, ...cur])
-      setSuccessMessage(`Realisasi untuk "${rencana.rencana_aksi.slice(0, 60)}" berhasil disimpan.${accumNote}`)
+      setSuccessMessage(`Realisasi untuk "${rencana.rencana_aksi.slice(0, 60)}" berhasil disimpan (${uploaded.length} dokumen).${accumNote}`)
       setCreateOpen(false)
     } catch (error) {
       setFetchError(`Gagal menyimpan realisasi: ${error.message} Pastikan supabase/realisasi_kinerja.sql sudah dijalankan (bucket bukti-dukung).`)
@@ -735,7 +827,7 @@ function RealisasiKinerjaForm({ currentUser }) {
     setEditOpen(true)
   }
 
-  const handleSubmitEdit = async (form, file) => {
+  const handleSubmitEdit = async (form, { newFiles, removedIds }) => {
     if (savingEdit || !editingRow) return
     const rencana = rencanaById[form.rencanaAksiId]
     const cascading = rencana ? cascadingById[rencana.cascading_id] : null
@@ -745,18 +837,58 @@ function RealisasiKinerjaForm({ currentUser }) {
     }
     setSavingEdit(true)
     try {
-      let bukti = {
-        bukti_path: editingRow.bukti_path,
-        bukti_nama: editingRow.bukti_nama,
-        bukti_tipe: editingRow.bukti_tipe,
-        bukti_size: editingRow.bukti_size,
-      }
-      if (file) {
-        const uploaded = await uploadBukti(file, cascading.tahun_anggaran)
-        bukti = uploaded
-        if (editingRow.bukti_path && editingRow.bukti_path !== uploaded.bukti_path) {
-          await supabase.storage.from('bukti-dukung').remove([editingRow.bukti_path])
+      const existingAll = (buktiMap.get(editingRow.id) ?? []).length > 0
+        ? buktiMap.get(editingRow.id)
+        : (editingRow.bukti_path ? [{
+          id: `legacy-${editingRow.id}`,
+          bukti_path: editingRow.bukti_path,
+          bukti_nama: editingRow.bukti_nama,
+          bukti_tipe: editingRow.bukti_tipe,
+          bukti_size: editingRow.bukti_size,
+          bukti_drive_id: editingRow.bukti_drive_id,
+        }] : [])
+      const kept = existingAll.filter((b) => !(removedIds ?? []).includes(b.id))
+      // Hapus lampiran yang dibuang user (termasuk fallback legacy pra-migrasi).
+      for (const b of existingAll.filter((b) => (removedIds ?? []).includes(b.id))) {
+        try {
+          if (String(b.id).startsWith('legacy-')) {
+            if (b.bukti_path) await supabase.storage.from('bukti-dukung').remove([b.bukti_path])
+            if (b.bukti_drive_id) await deleteFromDrive(b.bukti_drive_id)
+          } else {
+            await deleteBuktiRow(b)
+          }
+        } catch (err) {
+          throw new Error(`Gagal menghapus ${b.bukti_nama}: ${err.message}`)
         }
+      }
+      // Upload dokumen tambahan.
+      let uploaded = []
+      if (newFiles && newFiles.length > 0) {
+        uploaded = await uploadMultipleBukti(newFiles, cascading.tahun_anggaran)
+        const childRows = uploaded.map((b) => ({ realisasi_id: editingRow.id, ...b }))
+        const { data: inserted, error: childError } = await supabase.from('realisasi_bukti').insert(childRows).select()
+        if (childError) {
+          await cleanupUploaded(uploaded)
+          if (childError.code === '42P01' || childError.code === 'PGRST205') {
+            throw new Error('Tabel realisasi_bukti belum ada. Jalankan supabase/realisasi_bukti_multi.sql di SQL Editor dulu.')
+          }
+          throw childError
+        }
+        kept.push(...(inserted ?? []))
+      }
+      if (kept.length === 0) {
+        await cleanupUploaded(uploaded)
+        throw new Error('Minimal satu dokumen bukti harus dipertahankan.')
+      }
+      // Sinkronkan kolom legacy parent ke dokumen pertama.
+      const first = kept[0]
+      const legacy = {
+        bukti_path: first.bukti_path,
+        bukti_nama: first.bukti_nama,
+        bukti_tipe: first.bukti_tipe,
+        bukti_size: first.bukti_size,
+        bukti_drive_id: first.bukti_drive_id ?? null,
+        bukti_drive_link: first.bukti_drive_link ?? null,
       }
       const { data, error } = await supabase
         .from('realisasi_kinerja')
@@ -766,15 +898,19 @@ function RealisasiKinerjaForm({ currentUser }) {
           tanggal_kegiatan: form.tanggalKegiatan,
           realisasi_anggaran: form.realisasiAnggaran.trim() === '' ? null : Number(form.realisasiAnggaran),
           catatan_kendala: form.catatanKendala.trim() || null,
-          ...bukti,
+          ...legacy,
           tahun_anggaran: cascading.tahun_anggaran,
         })
         .eq('id', editingRow.id)
         .select()
         .single()
-      if (error) throw error
+      if (error) {
+        await cleanupUploaded(uploaded)
+        throw error
+      }
+      setBuktiMap((cur) => new Map(cur).set(editingRow.id, kept))
       setRows((cur) => cur.map((r) => (r.id === editingRow.id ? data : r)))
-      setSuccessMessage('Realisasi kinerja telah diperbarui.')
+      setSuccessMessage(`Realisasi kinerja telah diperbarui (${kept.length} dokumen).`)
       setEditOpen(false)
       setEditingRow(null)
     } catch (error) {
@@ -789,11 +925,30 @@ function RealisasiKinerjaForm({ currentUser }) {
     if (!deleteTarget || deleting) return
     setDeleting(true)
     try {
+      // Hapus seluruh lampiran anak dulu (storage + drive + row).
+      for (const b of buktiMap.get(deleteTarget.id) ?? []) {
+        try {
+          await deleteBuktiRow(b)
+        } catch { /* lanjut */ }
+      }
       const { error } = await supabase.from('realisasi_kinerja').delete().eq('id', deleteTarget.id)
       if (error) throw error
+      // Fallback legacy bila tabel anak belum ada: hapus berkas parent.
       if (deleteTarget.bukti_path) {
-        await supabase.storage.from('bukti-dukung').remove([deleteTarget.bukti_path])
+        try {
+          await supabase.storage.from('bukti-dukung').remove([deleteTarget.bukti_path])
+        } catch { /* abaikan */ }
       }
+      if (deleteTarget.bukti_drive_id) {
+        try {
+          await deleteFromDrive(deleteTarget.bukti_drive_id)
+        } catch { /* abaikan */ }
+      }
+      setBuktiMap((cur) => {
+        const next = new Map(cur)
+        next.delete(deleteTarget.id)
+        return next
+      })
       setRows((cur) => cur.filter((r) => r.id !== deleteTarget.id))
       setSuccessMessage('Riwayat realisasi telah dihapus.')
       setDeleteTarget(null)
@@ -804,11 +959,52 @@ function RealisasiKinerjaForm({ currentUser }) {
     }
   }
 
+  // ---- TAMBAH DOKUMEN (tanpa edit form) ----
+  const openAttach = (row) => {
+    setAttachRow(row)
+    setAttachFiles([])
+    setSuccessMessage('')
+    setFetchError('')
+  }
+
+  const handleAttachSubmit = async () => {
+    if (!attachRow || attaching || attachFiles.length === 0) return
+    const rencana = rencanaById[attachRow.rencana_aksi_id]
+    const cascading = rencana ? cascadingById[rencana.cascading_id] : null
+    const tahun = cascading?.tahun_anggaran ?? attachRow.tahun_anggaran
+    setAttaching(true)
+    try {
+      const uploaded = await uploadMultipleBukti(attachFiles, tahun)
+      const childRows = uploaded.map((b) => ({ realisasi_id: attachRow.id, ...b }))
+      const { data: inserted, error } = await supabase.from('realisasi_bukti').insert(childRows).select()
+      if (error) {
+        await cleanupUploaded(uploaded)
+        if (error.code === '42P01' || error.code === 'PGRST205') {
+          throw new Error('Tabel realisasi_bukti belum ada. Jalankan supabase/realisasi_bukti_multi.sql di SQL Editor dulu.')
+        }
+        throw error
+      }
+      setBuktiMap((cur) => {
+        const next = new Map(cur)
+        next.set(attachRow.id, [...(next.get(attachRow.id) ?? []), ...(inserted ?? [])])
+        return next
+      })
+      setSuccessMessage(`Berhasil menambah ${uploaded.length} dokumen ke realisasi "${attachRow.realisasi_kinerja}".`)
+      setAttachRow(null)
+      setAttachFiles([])
+    } catch (error) {
+      setFetchError(`Gagal menambah dokumen: ${error.message}`)
+    } finally {
+      setAttaching(false)
+    }
+  }
+
   useEffect(() => {
     const handleKey = (event) => {
       if (event.key === 'Escape') {
-        if (deleting || savingCreate || savingEdit) return
-        if (viewerRow) setViewerRow(null)
+        if (deleting || savingCreate || savingEdit || attaching) return
+        if (viewerRow) { setViewerRow(null); setViewerFiles([]) }
+        else if (attachRow) { setAttachRow(null); setAttachFiles([]) }
         else if (deleteTarget) setDeleteTarget(null)
         else if (editOpen) { setEditOpen(false); setEditingRow(null) }
         else if (createOpen) setCreateOpen(false)
@@ -849,14 +1045,21 @@ function RealisasiKinerjaForm({ currentUser }) {
     )
   }
 
-  const createInitial = { rencanaAksiId: '', realisasiKinerja: '', tanggalKegiatan: '', realisasiAnggaran: '', catatanKendala: '', existingBukti: null }
+  const createInitial = { rencanaAksiId: '', realisasiKinerja: '', tanggalKegiatan: '', realisasiAnggaran: '', catatanKendala: '', existingBuktiList: [] }
   const editInitial = editingRow ? {
     rencanaAksiId: editingRow.rencana_aksi_id,
     realisasiKinerja: editingRow.realisasi_kinerja ?? '',
     tanggalKegiatan: editingRow.tanggal_kegiatan ?? '',
     realisasiAnggaran: editingRow.realisasi_anggaran === null || editingRow.realisasi_anggaran === undefined ? '' : String(editingRow.realisasi_anggaran),
     catatanKendala: editingRow.catatan_kendala ?? '',
-    existingBukti: editingRow.bukti_path ? { nama: editingRow.bukti_nama, size: editingRow.bukti_size } : null,
+    existingBuktiList: buktiMap.get(editingRow.id) ?? (editingRow.bukti_path ? [{
+      id: `legacy-${editingRow.id}`,
+      realisasi_id: editingRow.id,
+      bukti_path: editingRow.bukti_path,
+      bukti_nama: editingRow.bukti_nama,
+      bukti_tipe: editingRow.bukti_tipe,
+      bukti_size: editingRow.bukti_size,
+    }] : []),
   } : createInitial
 
   return (
@@ -1054,16 +1257,38 @@ function RealisasiKinerjaForm({ currentUser }) {
                   </td>
                   <td className="px-space-md py-space-sm text-center">
                     {r.bukti_path ? (
-                      <button
-                        type="button" onClick={() => setViewerRow(r)}
-                        className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg border border-outline-variant text-primary hover:bg-surface-container transition-colors"
-                        title={`Lihat ${r.bukti_nama || 'bukti dukung'}`}
-                        aria-label="Lihat bukti dukung"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">visibility</span>
-                      </button>
+                      <div className="flex items-center justify-center gap-space-2xs">
+                        <button
+                          type="button" onClick={() => openViewer(r)}
+                          className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg border border-outline-variant text-primary hover:bg-surface-container transition-colors"
+                          title={`Lihat ${r.bukti_nama || 'bukti dukung'}${(buktiMap.get(r.id) ?? []).length > 1 ? ` (${(buktiMap.get(r.id) ?? []).length} dokumen)` : ''}`}
+                          aria-label="Lihat bukti dukung"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">visibility</span>
+                        </button>
+                        <button
+                          type="button" onClick={() => openAttach(r)}
+                          className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg border border-outline-variant text-secondary hover:bg-surface-container hover:text-primary transition-colors"
+                          title="Tambah dokumen"
+                          aria-label="Tambah dokumen"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">note_add</span>
+                        </button>
+                        {(buktiMap.get(r.id) ?? []).length > 1 && (
+                          <span className="inline-flex items-center px-space-2xs rounded-full bg-primary-fixed/25 text-primary font-label-sm font-bold whitespace-nowrap">
+                            {(buktiMap.get(r.id) ?? []).length} dok
+                          </span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-secondary">-</span>
+                      <button
+                        type="button" onClick={() => openAttach(r)}
+                        className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg border border-dashed border-outline-variant text-secondary hover:bg-surface-container hover:text-primary transition-colors"
+                        title="Tambah dokumen"
+                        aria-label="Tambah dokumen"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">note_add</span>
+                      </button>
                     )}
                   </td>
                   <td className="px-space-md py-space-sm">
@@ -1155,7 +1380,68 @@ function RealisasiKinerjaForm({ currentUser }) {
 
       {/* Viewer dokumen */}
       {viewerRow && (
-        <BuktiViewer row={viewerRow} onClose={() => setViewerRow(null)} />
+        <BuktiViewer row={viewerRow} files={viewerFiles} onClose={() => { setViewerRow(null); setViewerFiles([]) }} />
+      )}
+
+      {/* Tambah dokumen */}
+      {attachRow && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-space-md" onClick={() => !attaching && setAttachRow(null)} role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="attach-modal-title"
+            className="rounded-2xl bg-surface-container-lowest shadow-xl border border-surface-container p-space-lg max-w-[520px] w-full"
+            onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center gap-space-sm text-primary mb-space-sm">
+              <span className="material-symbols-outlined text-[28px]">note_add</span>
+              <h3 id="attach-modal-title" className="font-headline-md text-headline-md font-bold">Tambah Dokumen</h3>
+            </div>
+            <p className="font-body-sm text-body-sm text-secondary mb-space-sm">
+              Realisasi <span className="font-bold text-on-surface">{attachRow.realisasi_kinerja}</span>
+              {' '}• {formatTanggal(attachRow.tanggal_kegiatan)}
+              {' '}• sudah ada {(buktiMap.get(attachRow.id) ?? []).length || (attachRow.bukti_path ? 1 : 0)} dokumen.
+            </p>
+            <input ref={attachInputRef} type="file" accept={ACCEPT_ATTR} multiple className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) setAttachFiles((cur) => [...cur, ...[...e.target.files]])
+                e.target.value = ''
+              }} />
+            <button type="button" onClick={() => attachInputRef.current?.click()} disabled={attaching}
+              className="w-full p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col items-center justify-center text-center gap-space-2xs disabled:opacity-50">
+              <span className="material-symbols-outlined text-[28px] text-primary-container">file_upload</span>
+              <span className="font-body-md text-body-md font-bold text-on-surface">
+                {attachFiles.length > 0 ? `${attachFiles.length} berkas dipilih — klik untuk tambah lagi` : 'Klik untuk memilih berkas (bisa banyak)'}
+              </span>
+              <span className="font-label-sm text-label-sm text-secondary">PDF / Excel / JPG / PNG, maks. 10 MB per berkas</span>
+            </button>
+            {attachFiles.length > 0 && (
+              <div className="flex flex-col gap-space-2xs mt-space-sm">
+                {attachFiles.map((f, i) => (
+                  <div key={`${f.name}-${f.size}-${i}`} className="flex items-center gap-space-sm rounded-xl border border-dashed border-primary/40 bg-primary-fixed/10 px-space-sm py-space-2xs font-body-sm text-body-sm">
+                    <span className="material-symbols-outlined text-primary text-[20px]">upload_file</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-on-surface truncate">{f.name}</div>
+                      <div className="text-secondary">{formatSize(f.size)}</div>
+                    </div>
+                    <button type="button" onClick={() => setAttachFiles((cur) => cur.filter((_, j) => j !== i))} disabled={attaching}
+                      className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg text-error hover:bg-error-container transition-colors shrink-0 disabled:opacity-50"
+                      aria-label={`Batalkan ${f.name}`}>
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-space-sm mt-space-md">
+              <button type="button" onClick={() => { setAttachRow(null); setAttachFiles([]) }} disabled={attaching}
+                className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors disabled:opacity-50">
+                Batal
+              </button>
+              <button type="button" onClick={handleAttachSubmit} disabled={attaching || attachFiles.length === 0}
+                className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-primary px-space-md font-body-md text-body-md font-bold text-on-primary shadow-sm hover:bg-primary-container transition-colors disabled:opacity-60">
+                <span className="material-symbols-outlined text-[18px]">{attaching ? 'progress_activity' : 'upload'}</span>
+                {attaching ? 'Mengunggah...' : `Unggah ${attachFiles.length} Dokumen`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete */}
