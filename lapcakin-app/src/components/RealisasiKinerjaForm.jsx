@@ -578,6 +578,8 @@ function RealisasiKinerjaForm({ currentUser }) {
   const [search, setSearch] = useState('')
   const [filterTahun, setFilterTahun] = useState('Semua')
   const [filterTriwulan, setFilterTriwulan] = useState('Semua')
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const [createOpen, setCreateOpen] = useState(false)
   const [savingCreate, setSavingCreate] = useState(false)
@@ -720,7 +722,16 @@ function RealisasiKinerjaForm({ currentUser }) {
   }, [enriched, userUnit])
 
   const keyword = search.trim().toLowerCase()
-  const filtered = useMemo(() => ownRows.filter((r) => {
+  // Filter dulu (tahun / triwulan / keyword), lalu dedup: 1 baris per
+  // rencana_aksi_id = pengisian TERAKHIR berdasarkan waktu input (created_at).
+  // Jangan pakai tanggal_kegiatan untuk menentukan "terakhir", karena user bisa
+  // mengisi tanggal kegiatan yang lebih lama dari isian sebelumnya — baris baru
+  // (nilai akumulasi) harus selalu menang agar tabel langsung bertambah.
+  // Ini mencegah double-count % karena nilai tersimpan sudah akumulasi.
+  // Urutan input terakhir: created_at desc (stable sort menjaga [dataBaru, ...lama]).
+  const byInputTerakhir = (a, b) =>
+    String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''))
+  const filteredBase = useMemo(() => ownRows.filter((r) => {
     if (filterTahun !== 'Semua' && String(r.tahun_anggaran) !== String(filterTahun)) return false
     if (filterTriwulan !== 'Semua' && triwulanOf(r.tanggal_kegiatan) !== filterTriwulan) return false
     if (!keyword) return true
@@ -732,16 +743,47 @@ function RealisasiKinerjaForm({ currentUser }) {
     )
   }), [ownRows, filterTahun, filterTriwulan, keyword])
 
-  // Total realisasi numerik per rencana (untuk akumulasi isian berikutnya).
+  const filtered = useMemo(() => {
+    const sorted = [...filteredBase].sort(byInputTerakhir)
+    const seen = new Set()
+    const out = []
+    for (const r of sorted) {
+      if (seen.has(r.rencana_aksi_id)) continue
+      seen.add(r.rencana_aksi_id)
+      out.push(r)
+    }
+    return out
+  }, [filteredBase])
+
+  // Total realisasi per rencana = nilai numerik pada pengisian TERAKHIR
+  // (bukan jumlah semua baris), karena isian baru sudah diakumulasi saat simpan.
   const prevTotals = useMemo(() => {
+    const sorted = [...rows].sort(byInputTerakhir)
     const map = {}
-    for (const r of rows) {
+    for (const r of sorted) {
+      if (map[r.rencana_aksi_id] !== undefined) continue
       const n = parseNum(r.realisasi_kinerja)
       if (Number.isNaN(n)) continue
-      map[r.rencana_aksi_id] = (map[r.rencana_aksi_id] ?? 0) + n
+      map[r.rencana_aksi_id] = n
     }
     return map
   }, [rows])
+
+  // ---- Pagination (10 baris / halaman) ----
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const paged = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE
+    return filtered.slice(start, start + PAGE_SIZE)
+  }, [filtered, safePage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, filterTahun, filterTriwulan])
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages)
+  }, [totalPages, currentPage])
 
   // ---- CREATE ----
   const openCreate = () => {
@@ -812,6 +854,7 @@ function RealisasiKinerjaForm({ currentUser }) {
       setRows((cur) => [data, ...cur])
       setSuccessMessage(`Realisasi untuk "${rencana.rencana_aksi.slice(0, 60)}" berhasil disimpan (${uploaded.length} dokumen).${accumNote}`)
       setCreateOpen(false)
+      setCurrentPage(1)
     } catch (error) {
       setFetchError(`Gagal menyimpan realisasi: ${error.message} Pastikan supabase/realisasi_kinerja.sql sudah dijalankan (bucket bukti-dukung).`)
     } finally {
@@ -1214,9 +1257,9 @@ function RealisasiKinerjaForm({ currentUser }) {
                     </span>
                   </td>
                 </tr>
-              ) : filtered.length > 0 ? filtered.map((r, idx) => (
+              ) : paged.length > 0 ? paged.map((r, idx) => (
                 <tr key={r.id} className="border-b border-surface-container last:border-0 hover:bg-surface-container-low/30 transition-colors">
-                  <td className="px-space-md py-space-sm font-body-sm text-body-sm text-secondary">{idx + 1}</td>
+                  <td className="px-space-md py-space-sm font-body-sm text-body-sm text-secondary">{(safePage - 1) * PAGE_SIZE + idx + 1}</td>
                   <td className="px-space-md py-space-sm font-mono font-bold text-primary whitespace-nowrap">
                     {r.iksk ? ikskNumber(r.iksk) : '-'}
                   </td>
@@ -1325,11 +1368,63 @@ function RealisasiKinerjaForm({ currentUser }) {
             </tbody>
           </table>
         </div>
-        <div className="p-space-md bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm text-secondary font-label-sm text-label-sm">
+        <div className="p-space-md bg-surface-container-low flex flex-col gap-space-sm text-secondary font-label-sm text-label-sm">
           <div className="flex items-center gap-space-xs">
             <span className="material-symbols-outlined text-[16px] text-primary-container">info</span>
-            <span>% = (realisasi / target) × 100 (capping 0–120%) bila satuan Persen; selain itu = target − realisasi.</span>
+            <span>% = (realisasi / target) × 100 (capping 0–120%) bila satuan Persen; selain itu = target − realisasi. Satu rencana tampil 1 baris (isian terakhir, nilai sudah akumulasi).</span>
           </div>
+          {filtered.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border-t border-surface-container pt-space-sm">
+              <span>
+                Menampilkan {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} dari {filtered.length} data
+                {' '}• Halaman {safePage} dari {totalPages}
+              </span>
+              <div className="flex items-center gap-space-2xs">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="inline-flex items-center justify-center h-[36px] px-space-sm rounded-lg border border-outline-variant font-body-sm text-body-sm font-bold hover:bg-surface-container-lowest transition-colors disabled:opacity-40"
+                  aria-label="Halaman sebelumnya"
+                >
+                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                  .reduce((acc, p) => {
+                    if (acc.length > 0 && p - acc[acc.length - 1] > 1) acc.push('…')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((p, i) => (p === '…' ? (
+                    <span key={`gap-${i}`} className="px-space-2xs">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setCurrentPage(p)}
+                      aria-current={p === safePage ? 'page' : undefined}
+                      className={`inline-flex items-center justify-center min-w-[36px] h-[36px] px-space-2xs rounded-lg border font-body-sm text-body-sm font-bold transition-colors ${
+                        p === safePage
+                          ? 'bg-primary text-on-primary border-primary'
+                          : 'border-outline-variant hover:bg-surface-container-lowest'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )))}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="inline-flex items-center justify-center h-[36px] px-space-sm rounded-lg border border-outline-variant font-body-sm text-body-sm font-bold hover:bg-surface-container-lowest transition-colors disabled:opacity-40"
+                  aria-label="Halaman berikutnya"
+                >
+                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -213,7 +213,9 @@ function DashboardAdmin({ onNavigate }) {
   }, [periodeRows, filterTahun])
 
   const orgPredikat = predikat(footer.rataCapaian)
-  const targetTwLabel = filterTriwulan === 'Semua' ? 'tahunan 100%' : `${filterTriwulan} = ${footer.targetTriwulan}%`
+  // Target hitung selalu tahunan 100%; target triwulan hanya teks info.
+  const targetTwInfo = filterTriwulan === 'Semua' ? null : TW_TARGET_PERSEN[filterTriwulan]
+  const targetTwLabel = 'target tahunan 100%'
 
   const go = (page) => {
     if (onNavigate) onNavigate(page)
@@ -240,7 +242,7 @@ function DashboardAdmin({ onNavigate }) {
             </span>
             {filterTriwulan !== 'Semua' && (
               <span className="px-space-xs py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm uppercase font-bold tracking-wider">
-                {filterTriwulan} • Target {footer.targetTriwulan}%
+                {filterTriwulan} • Target tahunan 100%{targetTwInfo !== null ? ` (info TW ${targetTwInfo}%)` : ''}
               </span>
             )}
             {periodeAktif && (
@@ -368,7 +370,7 @@ function DashboardAdmin({ onNavigate }) {
               <div className="bg-primary h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, footer.persenCapaianOrg ?? 0)}%` }}></div>
             </div>
             <div className="flex justify-between font-label-sm text-secondary">
-              <span>Rata-rata {footer.rataCapaian === null ? '-' : `${footer.rataCapaian.toFixed(2)}%`} ÷ {targetTwLabel}</span>
+              <span>Rata-rata {footer.rataCapaian === null ? '-' : `${footer.rataCapaian.toFixed(2)}%`} ÷ {targetTwLabel}{targetTwInfo !== null ? ` (info ${filterTriwulan}: ${targetTwInfo}%)` : ''}</span>
               <span className="font-bold">{footer.ikskCount} IKSK</span>
             </div>
           </div>

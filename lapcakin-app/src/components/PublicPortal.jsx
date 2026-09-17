@@ -561,7 +561,7 @@ function PublicPortal({ onLogin }) {
             </div>
             <div className="mt-1 text-[11px] text-slate-500 font-medium">
               {hasOrgReal
-                ? `Rata-rata ${formatPersenID(portalFooter.rataCapaian)} ÷ target ${portalTw} ${portalTargetTw}% • TA ${portalTahun}`
+                ? `Rata-rata ${formatPersenID(portalFooter.rataCapaian)} ÷ target tahunan 100% (info ${portalTw}: ${portalTargetTw}%) • TA ${portalTahun}`
                 : 'Menunggu data realisasi seksi'}
             </div>
             <div className="w-full bg-slate-100 h-1.5 rounded-full mt-5 overflow-hidden">
@@ -685,7 +685,7 @@ function PublicPortal({ onLogin }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartRows} margin={{ top: 16, right: 16, bottom: 8, left: 0 }} barCategoryGap="28%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                <XAxis dataKey="unit" tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }} axisLine={{ stroke: '#CBD5E1' }} tickLine={false} interval={0} />
+                <XAxis dataKey="unit" tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }} axisLine={{ stroke: '#CBD5E1' }} tickLine={false} interval={0} angle={chartRows.length > 5 ? -18 : 0} dy={chartRows.length > 5 ? 12 : 0} height={chartRows.length > 5 ? 56 : 30} />
                 <YAxis
                   domain={[0, 120]}
                   ticks={[0, 20, 40, 60, 80, 100, 120]}
@@ -707,7 +707,7 @@ function PublicPortal({ onLogin }) {
 
           <div className="border-t border-slate-100 pt-3 mt-2">
             <p className="text-[11px] text-slate-400 font-medium">
-              Nilai kumulatif s.d. triwulan aktif (mis. TW II = TW I + TW II) • Seluruh seksi ditampilkan (kosong = 0%) • Garis putus-putus menandai ambang 100% (Standar Capping System 0%–120%)
+              Nilai kumulatif s.d. triwulan aktif (mis. TW II = TW I + TW II) • Seluruh seksi ditampilkan (kosong = 0%) • Target hitung tahunan 100% (info {portalTw}: {portalTargetTw}%) • Garis putus-putus menandai ambang 100% (Standar Capping System 0%–120%)
             </p>
           </div>
         </section>

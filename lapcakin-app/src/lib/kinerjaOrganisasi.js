@@ -246,9 +246,12 @@ export function computeOrganisasi({
   const persenValsAll = rows.map((r) => r.persenOrg).filter((p) => p !== null && p !== undefined)
   const rataCapaian = capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null
   const avgRealisasiTarget = persenValsAll.length > 0 ? persenValsAll.reduce((a, b) => a + b, 0) / persenValsAll.length : null
-  const targetTriwulan = targetTriwulanOf(filterTriwulan)
-  // % capaian kinerja organisasi = (rata-rata capaian / target triwulan) * 100
-  const persenCapaianOrg = rataCapaian === null || !targetTriwulan ? null : (rataCapaian / targetTriwulan) * 100
+  // Target hitung = target 1 tahun (100%). Target per triwulan (25/50/75/100)
+  // hanya dipakai sebagai teks info tampilan, tidak dalam perhitungan.
+  const targetTriwulan = 100
+  const targetTriwulanInfo = targetTriwulanOf(filterTriwulan)
+  // % capaian kinerja organisasi = rata-rata capaian terhadap target tahunan.
+  const persenCapaianOrg = rataCapaian
   const jumlahAnggaran = rows.reduce((s, r) => s + (r.anggaran ?? 0), 0)
   const jumlahRealisasi = rows.reduce((s, r) => s + (r.realisasiAnggaran ?? 0), 0)
   const persenRealisasiAnggaran = jumlahAnggaran > 0 ? (jumlahRealisasi / jumlahAnggaran) * 100 : null
@@ -257,6 +260,7 @@ export function computeOrganisasi({
   const footer = {
     rataCapaian,
     targetTriwulan,
+    targetTriwulanInfo,
     persenCapaianOrg,
     jumlahAnggaran,
     jumlahRealisasi,
