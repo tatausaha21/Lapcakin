@@ -120,6 +120,31 @@ function predikat(capaian) {
   return { label: 'Kurang', cls: 'bg-rose-100 text-rose-700' }
 }
 
+// Petakan jenis_periode (tabel periode_kinerja) -> id tombol triwulan portal.
+// Triwulan I->TW1 ... Triwulan IV->TW4; Semester I->TW2; Semester II/Tahunan->TW4.
+function twIdFromJenisPeriode(jenis) {
+  const key = String(jenis ?? '').trim().toLowerCase()
+  const exact = {
+    'triwulan i': 'TW1', 'triwulan 1': 'TW1', 'tw i': 'TW1', 'tw1': 'TW1',
+    'triwulan ii': 'TW2', 'triwulan 2': 'TW2', 'tw ii': 'TW2', 'tw2': 'TW2',
+    'triwulan iii': 'TW3', 'triwulan 3': 'TW3', 'tw iii': 'TW3', 'tw3': 'TW3',
+    'triwulan iv': 'TW4', 'triwulan 4': 'TW4', 'tw iv': 'TW4', 'tw4': 'TW4',
+    'semester i': 'TW2', 'semester 1': 'TW2',
+    'semester ii': 'TW4', 'semester 2': 'TW4',
+    'tahunan': 'TW4',
+  }
+  if (exact[key]) return exact[key]
+  if (key.includes('semester')) return (key.includes('ii') || key.includes('2')) ? 'TW4' : 'TW2'
+  if (key.includes('tahunan')) return 'TW4'
+  if (key.includes('triwulan') || key.startsWith('tw')) {
+    if (key.includes('iv') || key.includes('4')) return 'TW4'
+    if (key.includes('iii') || key.includes('3')) return 'TW3'
+    if (key.includes('ii') || key.includes('2')) return 'TW2'
+    return 'TW1'
+  }
+  return null
+}
+
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   const row = payload[0].payload
@@ -135,6 +160,9 @@ function ChartTooltip({ active, payload, label }) {
 function PublicPortal({ onLogin }) {
   const [loginMode, setLoginMode] = useState(null)
   const [triwulan, setTriwulan] = useState('TW1')
+  // Periode kinerja Aktif (diisi otomatis dari DB saat halaman dimuat).
+  const [periodeAktif, setPeriodeAktif] = useState(null)
+  const triwulanManualRef = useRef(false)
   const [rankTab, setRankTab] = useState('unit')
   const [activeSlide, setActiveSlide] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -158,7 +186,7 @@ function PublicPortal({ onLogin }) {
     let cancelled = false
     const load = async () => {
       try {
-        const [iksk, unit, pegawai, skFull, ikskFull, unitFull, casc, rencana, realisasi, galeri] = await Promise.all([
+        const [iksk, unit, pegawai, skFull, ikskFull, unitFull, casc, rencana, realisasi, galeri, periode] = await Promise.all([
           supabase.from('perkin_iksk').select('id, uraian, target_tahunan, satuan').order('nomor_urut', { ascending: true }).limit(50),
           supabase.from('unit_kerja').select('id', { count: 'exact', head: true }),
           supabase.from('master_users').select('nama_lengkap, username, jabatan, peran, unit_kerja_nama, status').eq('status', 'Aktif').order('nama_lengkap').limit(50),
@@ -170,8 +198,18 @@ function PublicPortal({ onLogin }) {
           supabase.from('realisasi_kinerja').select('*'),
           // Galeri tayang; abaikan error bila tabel belum ada (fallback ke data statis).
           supabase.from('galeri_kegiatan').select('*').eq('tampil', true).order('tanggal_kegiatan', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }).limit(12),
+          // Periode kinerja Aktif (terbaru); abaikan error bila tabel belum ada.
+          supabase.from('periode_kinerja').select('id, kode_periode, nama_periode, tahun_anggaran, jenis_periode, tanggal_mulai, tanggal_selesai, status').eq('status', 'Aktif').order('tahun_anggaran', { ascending: false }).order('tanggal_mulai', { ascending: false }).limit(5),
         ])
         if (cancelled) return
+        // Grafik otomatis mengikuti periode Aktif (kecuali pengunjung sudah
+        // memilih triwulan manual sebelum data selesai dimuat).
+        if (!periode.error) {
+          const aktif = (periode.data ?? [])[0] ?? null
+          setPeriodeAktif(aktif)
+          const twId = twIdFromJenisPeriode(aktif?.jenis_periode)
+          if (twId && !triwulanManualRef.current) setTriwulan(twId)
+        }
         setIkskRows(iksk.data ?? [])
         setPegawaiRows(pegawai.data ?? [])
         setCounts({
@@ -455,7 +493,7 @@ function PublicPortal({ onLogin }) {
                 Dokumentasi Lapangan
               </div>
               <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                Galeri Potret Pelaksanaan Kinerja Lapang
+                Galeri Potret Pelaksanaan Kinerja
               </h2>
               <p className="text-xs text-emerald-100/80 font-normal mt-0.5">Potret realisasi program kerja, pembinaan, dan akuntabilitas pelayanan publik tahun 2026</p>
               {galeriRows.length > 0 && (
@@ -662,13 +700,18 @@ function PublicPortal({ onLogin }) {
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => setTriwulan(opt.id)}
+                    onClick={() => { triwulanManualRef.current = true; setTriwulan(opt.id) }}
                     className={`text-xs px-3 py-1.5 font-bold transition-colors ${triwulan === opt.id ? 'bg-emerald-700 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
+              {periodeAktif && (
+                <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200 tracking-wide uppercase" title={`Periode aktif: ${periodeAktif.nama_periode ?? ''} (${periodeAktif.jenis_periode ?? ''}) TA ${periodeAktif.tahun_anggaran ?? ''}`}>
+                  Periode aktif: {periodeAktif.nama_periode || periodeAktif.jenis_periode || 'Aktif'}
+                </span>
+              )}
               {hasChartReal ? (
                 <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 tracking-wide uppercase">
                   Data Real • TA {portalTahun}

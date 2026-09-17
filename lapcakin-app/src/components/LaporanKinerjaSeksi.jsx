@@ -10,7 +10,8 @@ function parseNum(str) {
   return m ? Number(m[0]) : NaN
 }
 
-// % realisasi target per rencana (dari total realisasi terakumulasi):
+// % realisasi target per rencana (dari nilai pengisian TERAKHIR — sama dengan
+// tabel riwayat di Input Realisasi Kinerja, yang nilainya sudah akumulasi):
 // Persen -> (total / target) * 100 capping 0..120;
 // selain itu -> target - total.
 function calcRealisasiPersen(total, target, satuan) {
@@ -182,15 +183,19 @@ function LaporanKinerjaSeksi({ currentUser }) {
           if (filterTriwulan !== 'Semua' && triwulanOf(e.tanggal_kegiatan) !== filterTriwulan) return false
           return true
         })
-        // Total realisasi terakumulasi (abaikan isian non-angka).
-        const nums = entries.map((e) => parseNum(e.realisasi_kinerja)).filter((n) => !Number.isNaN(n))
-        const total = nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : NaN
+        // % realisasi target diambil dari pengisian TERAKHIR (waktu input,
+        // sama persis dengan 1 baris per rencana di tabel riwayat Input
+        // Realisasi Kinerja). Nilai tersimpan sudah akumulasi sehingga
+        // JANGAN dijumlah lagi — menjumlah ulang menyebabkan double-count.
+        const byInputTerakhir = (a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''))
+        const latestEntry = [...entries].sort(byInputTerakhir)[0] ?? null
+        const total = latestEntry ? parseNum(latestEntry.realisasi_kinerja) : NaN
         const persen = calcRealisasiPersen(total, r.target_kinerja, r.satuan)
         // Total serapan anggaran (abaikan yang kosong).
         const angNums = entries.map((e) => (e.realisasi_anggaran === null ? NaN : Number(e.realisasi_anggaran))).filter((n) => !Number.isNaN(n))
         const totalAnggaran = angNums.length > 0 ? angNums.reduce((a, b) => a + b, 0) : null
         const capaian = calcCapaian(persen, iksk?.target_tahunan, iksk?.polaritas ?? 'Positive')
-        const latestKendala = entries.map((e) => e.catatan_kendala).find((c) => c && c.trim()) || ''
+        const latestKendala = [...entries].sort(byInputTerakhir).map((e) => e.catatan_kendala).find((c) => c && c.trim()) || ''
         const bukti = entries.filter((e) => e.bukti_path)
         return { rencana: r, cascading: r.cascading, iksk, sk, entries, persen, totalAnggaran, capaian, latestKendala, bukti }
       })
@@ -646,7 +651,7 @@ function LaporanKinerjaSeksi({ currentUser }) {
         <div className="p-space-md bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm text-secondary font-label-sm text-label-sm">
           <div className="flex items-center gap-space-xs">
             <span className="material-symbols-outlined text-[16px] text-primary-container">info</span>
-            <span>% Capaian Positive = (%realisasi / target tahunan) × 100; Negative = (2 × (target tahunan / %realisasi)) × 100; capping 0–120%.</span>
+            <span>% Realisasi diambil dari pengisian terakhir di tabel riwayat (nilai sudah akumulasi). % Capaian Positive = (%realisasi / target tahunan) × 100; Negative = (2 × (target tahunan / %realisasi)) × 100; capping 0–120%.</span>
           </div>
         </div>
       </div>

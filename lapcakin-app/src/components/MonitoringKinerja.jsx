@@ -9,7 +9,8 @@ function parseNum(str) {
   return m ? Number(m[0]) : NaN
 }
 
-// % realisasi target per rencana (dari total realisasi terakumulasi):
+// % realisasi target per rencana (dari nilai pengisian TERAKHIR — sama dengan
+// tabel riwayat di Input Realisasi Kinerja, yang nilainya sudah akumulasi):
 // Persen -> (total / target) * 100 capping 0..120;
 // selain itu -> target - total.
 function calcRealisasiPersen(total, target, satuan) {
@@ -184,9 +185,12 @@ function MonitoringKinerja() {
           if (filterTriwulan !== 'Semua' && triwulanOf(e.tanggal_kegiatan) !== filterTriwulan) return false
           return true
         })
-        // Total realisasi terakumulasi (abaikan isian non-angka).
-        const nums = entries.map((e) => parseNum(e.realisasi_kinerja)).filter((n) => !Number.isNaN(n))
-        const total = nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : NaN
+        // % diambil dari pengisian TERAKHIR (waktu input) — nilai tersimpan
+        // sudah akumulasi sehingga JANGAN dijumlah lagi (double-count).
+        // Sama persis dengan 1 baris per rencana di tabel riwayat.
+        const byInputTerakhir = (a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''))
+        const latestEntry = [...entries].sort(byInputTerakhir)[0] ?? null
+        const total = latestEntry ? parseNum(latestEntry.realisasi_kinerja) : NaN
         const persen = calcRealisasiPersen(total, r.target_kinerja, r.satuan)
         const angNums = entries.map((e) => (e.realisasi_anggaran === null ? NaN : Number(e.realisasi_anggaran))).filter((n) => !Number.isNaN(n))
         const totalAnggaran = angNums.length > 0 ? angNums.reduce((a, b) => a + b, 0) : null

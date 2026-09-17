@@ -43,6 +43,16 @@ export function calcCapaian(persenRealisasi, targetTahunan, polaritas) {
   return Math.min(120, Math.max(0, v))
 }
 
+// Pengisian TERAKHIR sebuah rencana = entri dengan waktu input (created_at)
+// terbaru. Nilai realisasi_kinerja tersimpan sudah akumulasi, sehingga %
+// selalu dihitung dari 1 nilai terakhir ini — JANGAN menjumlah seluruh entri
+// (menjumlah ulang menyebabkan double-count). Sama dengan 1 baris per rencana
+// di tabel riwayat Input Realisasi Kinerja.
+export function latestRealisasiOf(entries) {
+  if (!entries || entries.length === 0) return null
+  return [...entries].sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')))[0] ?? null
+}
+
 export function triwulanOf(dateStr) {
   if (!dateStr) return null
   const m = new Date(`${dateStr}T00:00:00`).getMonth() + 1
@@ -161,8 +171,8 @@ export function computeOrganisasi({
         if (!inTw(e.tanggal_kegiatan)) return false
         return true
       })
-      const nums = entries.map((e) => parseNum(e.realisasi_kinerja)).filter((n) => !Number.isNaN(n))
-      const total = nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : NaN
+      const latest = latestRealisasiOf(entries)
+      const total = latest ? parseNum(latest.realisasi_kinerja) : NaN
       const persen = calcRealisasiPersen(total, r.target_kinerja, r.satuan)
       const angNums = entries
         .map((e) => (e.realisasi_anggaran === null || e.realisasi_anggaran === undefined ? NaN : Number(e.realisasi_anggaran)))
@@ -339,8 +349,8 @@ export function computePerSeksi({
         if (!inTw(e.tanggal_kegiatan)) return false
         return true
       })
-      const nums = entries.map((e) => parseNum(e.realisasi_kinerja)).filter((n) => !Number.isNaN(n))
-      const total = nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : NaN
+      const latest = latestRealisasiOf(entries)
+      const total = latest ? parseNum(latest.realisasi_kinerja) : NaN
       const persen = calcRealisasiPersen(total, rencana.target_kinerja, rencana.satuan)
       const capaian = calcCapaian(persen, iksk?.target_tahunan, iksk?.polaritas ?? 'Positive')
       const anggaran = rencana.anggaran === null || rencana.anggaran === undefined ? 0 : Number(rencana.anggaran) || 0

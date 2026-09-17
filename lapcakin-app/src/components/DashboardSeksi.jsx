@@ -199,7 +199,17 @@ function DashboardSeksi({ currentUser, onNavigate }) {
     return [...map.values()]
       .map((g) => {
         // Total realisasi vs total target rencana dalam IKSK ini.
-        const realNums = g.entries.map((e) => parseNum(e.realisasi_kinerja)).filter((n) => !Number.isNaN(n))
+        // Tiap rencana diambil 1 nilai pengisian TERAKHIR (nilai sudah
+        // akumulasi, sama dengan tabel riwayat) lalu dijumlah antar rencana.
+        // Menjumlah seluruh entri mentah menyebabkan double-count.
+        const latestByRencana = new Map()
+        for (const e of [...g.entries].sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')))) {
+          if (latestByRencana.has(e.rencana_aksi_id)) continue
+          const n = parseNum(e.realisasi_kinerja)
+          if (Number.isNaN(n)) continue
+          latestByRencana.set(e.rencana_aksi_id, n)
+        }
+        const realNums = [...latestByRencana.values()]
         const targetNums = g.rencana.map((r) => parseNum(r.target_kinerja)).filter((n) => !Number.isNaN(n))
         const totalReal = realNums.length > 0 ? realNums.reduce((a, b) => a + b, 0) : NaN
         const totalTarget = targetNums.length > 0 ? targetNums.reduce((a, b) => a + b, 0) : NaN
