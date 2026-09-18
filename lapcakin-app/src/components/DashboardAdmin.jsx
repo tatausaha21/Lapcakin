@@ -252,7 +252,7 @@ function DashboardAdmin({ onNavigate }) {
             )}
           </div>
           <p className="font-body-md text-body-md text-secondary max-w-3xl">
-            Seluruh angka dihitung langsung dari Supabase (PERKIN → Cascading → Rencana Aksi → Realisasi) —
+            Seluruh angka dihitung langsung (PERKIN → Cascading → Rencana Aksi → Realisasi) —
             rumus capaian sama dengan Laporan Kinerja Seksi.
           </p>
         </div>

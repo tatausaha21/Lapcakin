@@ -186,9 +186,9 @@ export function BuktiViewer({ row, files, onClose }) {
 
 // ---------- Modal wizard tambah/edit (navigasi bulir + geser) ----------
 function RealisasiWizard({
-  title, subtitle, submitLabel, saving, onClose, onSubmit,
+  title, subtitle, submitLabel, savingLabel, submitIcon = 'save', saving, onClose, onSubmit,
   rencanaOptions, rencanaById, ikskById, skById, ikskNumber,
-  initial, prevTotals, accumulate = true,
+  initial, prevTotals, accumulate = true, dirtyRef,
 }) {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(initial)
@@ -197,11 +197,55 @@ function RealisasiWizard({
   const [errors, setErrors] = useState({})
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef(null)
+  // Anti double-click: cap waktu terakhir pindah langkah. Submit dalam
+  // 800ms setelah pindah langkah diabaikan (klik kedua nyasar ke tombol submit).
+  const SUBMIT_GUARD_MS = 800
+  const stepChangedAt = useRef(0)
+
+  useEffect(() => {
+    stepChangedAt.current = Date.now()
+    // Lepaskan fokus tombol Lanjut agar aktivasi keyboard/klik ganda
+    // tidak nyasar ke tombol submit yang muncul di posisi sama.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  }, [step])
 
   const existingList = useMemo(
     () => (initial.existingBuktiList ?? []).filter((b) => !removedIds.includes(b.id)),
     [initial.existingBuktiList, removedIds],
   )
+  const removedList = useMemo(
+    () => (initial.existingBuktiList ?? []).filter((b) => removedIds.includes(b.id)),
+    [initial.existingBuktiList, removedIds],
+  )
+  // Jumlah dokumen efektif bila disimpan sekarang ( dipertahankan + berkas baru ).
+  const effectiveDocCount = existingList.length + newFiles.length
+
+  // Kotor = ada perubahan yang BELUM disimpan (baru tersimpan via tombol submit).
+  const isDirty = useMemo(() => (
+    removedIds.length > 0 ||
+    newFiles.length > 0 ||
+    form.rencanaAksiId !== (initial.rencanaAksiId ?? '') ||
+    form.realisasiKinerja !== (initial.realisasiKinerja ?? '') ||
+    form.tanggalKegiatan !== (initial.tanggalKegiatan ?? '') ||
+    form.realisasiAnggaran !== (initial.realisasiAnggaran ?? '') ||
+    form.catatanKendala !== (initial.catatanKendala ?? '')
+  ), [removedIds, newFiles, form, initial])
+
+  useEffect(() => {
+    if (dirtyRef) dirtyRef.current = isDirty
+  }, [isDirty, dirtyRef])
+
+  // Tutup hanya lewat sini: cegah modal "hilang" diam-diam sebelum disimpan.
+  const requestClose = () => {
+    if (saving) return
+    if (isDirty) {
+      const ok = window.confirm(
+        `Perubahan belum disimpan (tombol ${submitLabel} belum diklik). Tutup dan buang perubahan?`,
+      )
+      if (!ok) return
+    }
+    onClose()
+  }
 
   const pickFile = () => fileInputRef.current?.click()
 
@@ -286,6 +330,10 @@ function RealisasiWizard({
 
   const handleSubmit = (event) => {
     event.preventDefault()
+    if (Date.now() - stepChangedAt.current < SUBMIT_GUARD_MS) {
+      // Klik ganda nyasar saat transisi langkah — abaikan, bukan niat menyimpan.
+      return
+    }
     const all = { ...validateStep(0), ...validateStep(1), ...validateStep(2) }
     setErrors(all)
     if (Object.keys(all).length > 0) {
@@ -303,7 +351,13 @@ function RealisasiWizard({
     }`
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-space-md overflow-y-auto" onClick={onClose} role="presentation">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-space-md overflow-y-auto"
+      onClick={requestClose}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => event.preventDefault()}
+      role="presentation"
+    >
       <div
         role="dialog" aria-modal="true" aria-labelledby="realisasi-wizard-title"
         className="my-8 w-full max-w-[760px] rounded-2xl bg-surface-container-lowest shadow-xl border border-surface-container overflow-hidden max-h-[90vh] flex flex-col"
@@ -315,7 +369,7 @@ function RealisasiWizard({
               <h2 id="realisasi-wizard-title" className="font-headline-md text-headline-md text-on-surface font-bold">{title}</h2>
               <p className="font-body-sm text-body-sm text-secondary">{subtitle}</p>
             </div>
-            <button type="button" onClick={onClose} disabled={saving} aria-label="Tutup formulir"
+            <button type="button" onClick={requestClose} disabled={saving} aria-label="Tutup formulir"
               className="inline-flex items-center justify-center w-[36px] h-[36px] rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-colors disabled:opacity-50">
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -450,25 +504,54 @@ function RealisasiWizard({
                     Upload Bukti Dukung <span className="text-error">*</span>{' '}
                     <span className="font-label-sm font-semibold text-secondary">(PDF / Excel / JPG / PNG, maks. 10 MB per berkas — boleh lebih dari satu)</span>
                   </span>
-                  {existingList.length > 0 && (
+                  {(initial.existingBuktiList ?? []).length > 0 && (
                     <div className="flex flex-col gap-space-2xs">
                       <span className="font-label-sm text-label-sm font-bold text-secondary">
-                        Dokumen tersimpan ({existingList.length}) — tetap dipakai kecuali dihapus:
+                        Dokumen tersimpan ({(initial.existingBuktiList ?? []).length}) — tidak ada yang terhapus sebelum tombol {submitLabel} diklik.
+                        Klik ikon hapus hanya untuk menandai; baris tetap di daftar sampai disimpan:
                       </span>
-                      {existingList.map((b) => (
-                        <div key={b.id} className="flex items-center gap-space-sm rounded-xl bg-surface-container-low px-space-sm py-space-sm font-body-sm text-body-sm">
-                          <span className="material-symbols-outlined text-primary-container text-[22px]">description</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-on-surface truncate">{b.bukti_nama}</div>
-                            <div className="text-secondary">{formatSize(b.bukti_size)}</div>
+                      {(initial.existingBuktiList ?? []).map((b) => {
+                        const marked = removedIds.includes(b.id)
+                        return (
+                          <div
+                            key={b.id}
+                            className="flex items-center gap-space-sm rounded-xl bg-surface-container-low px-space-sm py-space-sm font-body-sm text-body-sm"
+                          >
+                            <span className="material-symbols-outlined text-primary-container text-[22px]">
+                              description
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-on-surface truncate">{b.bukti_nama}</div>
+                              <div className="text-secondary">{formatSize(b.bukti_size)}</div>
+                              {marked && (
+                                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-surface-container px-space-2xs py-0.5 font-label-sm text-label-sm font-bold text-secondary">
+                                  <span className="material-symbols-outlined text-[14px]">label</span>
+                                  Ditandai hapus • belum tersimpan — aktif setelah {submitLabel} diklik
+                                </div>
+                              )}
+                            </div>
+                            {marked ? (
+                              <button type="button" onClick={() => setRemovedIds((cur) => cur.filter((id) => id !== b.id))}
+                                className="inline-flex items-center gap-1 rounded-lg px-space-2xs py-1 font-label-sm text-label-sm font-bold text-primary hover:bg-primary-fixed/30 transition-colors shrink-0"
+                                title={`Urungkan hapus ${b.bukti_nama}`} aria-label={`Urungkan hapus ${b.bukti_nama}`}>
+                                <span className="material-symbols-outlined text-[16px]">undo</span> Urungkan
+                              </button>
+                            ) : (
+                              <button type="button" onClick={() => setRemovedIds((cur) => [...cur, b.id])}
+                                className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg text-error hover:bg-error-container transition-colors shrink-0"
+                                title={`Tandai hapus ${b.bukti_nama} (baru terhapus setelah ${submitLabel} diklik)`} aria-label={`Tandai hapus ${b.bukti_nama}`}>
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                            )}
                           </div>
-                          <button type="button" onClick={() => setRemovedIds((cur) => [...cur, b.id])}
-                            className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg text-error hover:bg-error-container transition-colors shrink-0"
-                            title={`Hapus ${b.bukti_nama}`} aria-label={`Hapus ${b.bukti_nama}`}>
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </div>
-                      ))}
+                        )
+                      })}
+                    </div>
+                  )}
+                  {removedList.length > 0 && (
+                    <div className="rounded-xl bg-surface-container border border-outline-variant px-space-sm py-space-2xs font-label-sm text-label-sm font-bold text-secondary">
+                      {removedList.length} dokumen ditandai hapus + {newFiles.length} berkas baru dipilih = {effectiveDocCount} dokumen bila {submitLabel} diklik.
+                      Belum ada perubahan tersimpan sampai tombol tersebut diklik.
                     </div>
                   )}
                   <div
@@ -524,7 +607,8 @@ function RealisasiWizard({
                   )}
                   {errors.bukti && <span className="font-label-sm text-label-sm text-error">{errors.bukti}</span>}
                   <span className="font-label-sm text-label-sm text-secondary">
-                    Berkas baru diunggah ke server hanya setelah tombol Simpan / Perbarui diklik.
+                    Berkas baru diunggah ke server dan dokumen yang ditandai hapus diproses permanen hanya setelah tombol {submitLabel} diklik.
+                    Klik ikon hapus pada dokumen tersimpan untuk menandai hapus bila salah upload — bisa diurungkan sebelum disimpan.
                   </span>
                 </div>
               </div>
@@ -534,7 +618,7 @@ function RealisasiWizard({
           {/* Footer navigasi */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border-t border-surface-container bg-surface-container-low/40 px-space-md py-space-md shrink-0">
             <div className="flex gap-space-sm">
-              <button type="button" onClick={onClose} disabled={saving}
+              <button type="button" onClick={requestClose} disabled={saving}
                 className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors disabled:opacity-50">
                 Batal
               </button>
@@ -553,8 +637,8 @@ function RealisasiWizard({
             ) : (
               <button type="submit" disabled={saving}
                 className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-primary px-space-md font-body-md text-body-md font-bold text-on-primary shadow-sm hover:bg-primary-container transition-colors disabled:opacity-60">
-                <span className="material-symbols-outlined text-[18px]">{saving ? 'progress_activity' : 'save'}</span>
-                {saving ? 'Menyimpan...' : submitLabel}
+                <span className={`material-symbols-outlined text-[18px] ${saving ? 'animate-spin' : ''}`}>{saving ? 'progress_activity' : submitIcon}</span>
+                {saving ? (savingLabel || 'Menyimpan...') : submitLabel}
               </button>
             )}
           </div>
@@ -595,8 +679,12 @@ function RealisasiKinerjaForm({ currentUser }) {
   const [buktiMap, setBuktiMap] = useState(new Map())
   const [attachRow, setAttachRow] = useState(null)
   const [attachFiles, setAttachFiles] = useState([])
+  const [attachRemovedIds, setAttachRemovedIds] = useState([])
   const [attaching, setAttaching] = useState(false)
   const attachInputRef = useRef(null)
+  // Menandai wizard tambah/edit punya perubahan belum disimpan (diisi oleh wizard).
+  const createDirtyRef = useRef(false)
+  const editDirtyRef = useRef(false)
 
   const openViewer = (row) => {
     setViewerRow(row)
@@ -789,6 +877,7 @@ function RealisasiKinerjaForm({ currentUser }) {
   const openCreate = () => {
     setSuccessMessage('')
     setFetchError('')
+    createDirtyRef.current = false
     setCreateOpen(true)
   }
 
@@ -867,6 +956,7 @@ function RealisasiKinerjaForm({ currentUser }) {
     setEditingRow(row)
     setSuccessMessage('')
     setFetchError('')
+    editDirtyRef.current = false
     setEditOpen(true)
   }
 
@@ -1002,41 +1092,118 @@ function RealisasiKinerjaForm({ currentUser }) {
     }
   }
 
-  // ---- TAMBAH DOKUMEN (tanpa edit form) ----
+  // ---- KELOLA DOKUMEN (staged: tandai hapus + pilih berkas baru, simpan sekaligus) ----
   const openAttach = (row) => {
     setAttachRow(row)
     setAttachFiles([])
+    setAttachRemovedIds([])
     setSuccessMessage('')
     setFetchError('')
   }
 
-  const handleAttachSubmit = async () => {
-    if (!attachRow || attaching || attachFiles.length === 0) return
+  // Tandai hapus saja — BELUM menyentuh database/storage sampai Perbarui Data diklik.
+  const markAttachDelete = (bukti) => {
+    if (!bukti || attaching) return
+    setAttachRemovedIds((cur) => (cur.includes(bukti.id) ? cur : [...cur, bukti.id]))
+  }
+
+  const undoAttachDelete = (bukti) => {
+    if (!bukti || attaching) return
+    setAttachRemovedIds((cur) => cur.filter((id) => id !== bukti.id))
+  }
+
+  // Satu-satunya tempat penyimpanan modal ini: dipanggil tombol Perbarui Data.
+  const handleAttachSave = async () => {
+    if (!attachRow || attaching) return
+    const hasMarkedDelete = attachRemovedIds.length > 0
+    const hasNewFiles = attachFiles.length > 0
+    if (!hasMarkedDelete && !hasNewFiles) return
     const rencana = rencanaById[attachRow.rencana_aksi_id]
     const cascading = rencana ? cascadingById[rencana.cascading_id] : null
     const tahun = cascading?.tahun_anggaran ?? attachRow.tahun_anggaran
-    setAttaching(true)
-    try {
-      const uploaded = await uploadMultipleBukti(attachFiles, tahun)
-      const childRows = uploaded.map((b) => ({ realisasi_id: attachRow.id, ...b }))
-      const { data: inserted, error } = await supabase.from('realisasi_bukti').insert(childRows).select()
-      if (error) {
-        await cleanupUploaded(uploaded)
-        if (error.code === '42P01' || error.code === 'PGRST205') {
-          throw new Error('Tabel realisasi_bukti belum ada. Jalankan supabase/realisasi_bukti_multi.sql di SQL Editor dulu.')
-        }
-        throw error
+    // Validasi berkas baru dulu agar gagal cepat sebelum menghapus apa pun.
+    for (const f of attachFiles) {
+      const msg = validateFile(f)
+      if (msg) {
+        setFetchError(`Gagal menyimpan dokumen: ${f.name}: ${msg}`)
+        return
       }
-      setBuktiMap((cur) => {
-        const next = new Map(cur)
-        next.set(attachRow.id, [...(next.get(attachRow.id) ?? []), ...(inserted ?? [])])
-        return next
-      })
-      setSuccessMessage(`Berhasil menambah ${uploaded.length} dokumen ke realisasi "${attachRow.realisasi_kinerja}".`)
+    }
+    setAttaching(true)
+    setFetchError('')
+    let uploaded = []
+    try {
+      const currentList = buktiMap.get(attachRow.id) ?? (attachRow.bukti_path ? [{
+        id: `legacy-${attachRow.id}`,
+        realisasi_id: attachRow.id,
+        bukti_path: attachRow.bukti_path,
+        bukti_nama: attachRow.bukti_nama,
+        bukti_tipe: attachRow.bukti_tipe,
+        bukti_size: attachRow.bukti_size,
+        bukti_drive_id: attachRow.bukti_drive_id,
+      }] : [])
+      const toDelete = currentList.filter((b) => attachRemovedIds.includes(b.id))
+      const keptInitial = currentList.filter((b) => !attachRemovedIds.includes(b.id))
+      // 1) Upload berkas baru dulu (belum insert DB).
+      if (hasNewFiles) {
+        uploaded = await uploadMultipleBukti(attachFiles, tahun)
+      }
+      if (keptInitial.length + uploaded.length === 0) {
+        await cleanupUploaded(uploaded)
+        throw new Error('Minimal satu dokumen harus dipertahankan. Urungkan hapus atau pilih berkas pengganti dulu.')
+      }
+      // 2) Hapus yang ditandai (storage + drive + row) — baru di sini tersimpan permanen.
+      for (const b of toDelete) {
+        if (String(b.id).startsWith('legacy-')) {
+          if (b.bukti_path) {
+            try { await supabase.storage.from('bukti-dukung').remove([b.bukti_path]) } catch { /* abaikan */ }
+          }
+          if (b.bukti_drive_id) {
+            try { await deleteFromDrive(b.bukti_drive_id) } catch { /* abaikan */ }
+          }
+        } else {
+          await deleteBuktiRow(b)
+        }
+      }
+      // 3) Insert baris anak untuk berkas baru.
+      let inserted = []
+      if (uploaded.length > 0) {
+        const childRows = uploaded.map((b) => ({ realisasi_id: attachRow.id, ...b }))
+        const { data, error } = await supabase.from('realisasi_bukti').insert(childRows).select()
+        if (error) {
+          await cleanupUploaded(uploaded)
+          if (error.code === '42P01' || error.code === 'PGRST205') {
+            throw new Error('Tabel realisasi_bukti belum ada. Jalankan supabase/realisasi_bukti_multi.sql di SQL Editor dulu.')
+          }
+          throw error
+        }
+        inserted = data ?? []
+      }
+      const remaining = [...keptInitial, ...inserted]
+      setBuktiMap((cur) => new Map(cur).set(attachRow.id, remaining))
+      // 4) Sinkronkan kolom legacy parent ke dokumen pertama tersisa.
+      const first = remaining[0]
+      const legacyPatch = first ? {
+        bukti_path: first.bukti_path, bukti_nama: first.bukti_nama,
+        bukti_tipe: first.bukti_tipe, bukti_size: first.bukti_size,
+        bukti_drive_id: first.bukti_drive_id ?? null, bukti_drive_link: first.bukti_drive_link ?? null,
+      } : {
+        bukti_path: null, bukti_nama: null, bukti_tipe: null, bukti_size: null,
+        bukti_drive_id: null, bukti_drive_link: null,
+      }
+      const { error: legacyError } = await supabase.from('realisasi_kinerja').update(legacyPatch).eq('id', attachRow.id)
+      if (legacyError) throw legacyError
+      setRows((cur) => cur.map((r) => (r.id === attachRow.id ? { ...r, ...legacyPatch } : r)))
+      const parts = []
+      if (toDelete.length > 0) parts.push(`${toDelete.length} dihapus`)
+      if (inserted.length > 0) parts.push(`${inserted.length} ditambah`)
+      setSuccessMessage(`Dokumen realisasi "${attachRow.realisasi_kinerja}" diperbarui (${parts.join(', ') || 'tanpa perubahan'}). Total ${remaining.length} dokumen tersimpan.`)
       setAttachRow(null)
       setAttachFiles([])
+      setAttachRemovedIds([])
     } catch (error) {
-      setFetchError(`Gagal menambah dokumen: ${error.message}`)
+      await cleanupUploaded(uploaded)
+      setFetchError(`Gagal memperbarui dokumen: ${error.message}`)
     } finally {
       setAttaching(false)
     }
@@ -1047,10 +1214,22 @@ function RealisasiKinerjaForm({ currentUser }) {
       if (event.key === 'Escape') {
         if (deleting || savingCreate || savingEdit || attaching) return
         if (viewerRow) { setViewerRow(null); setViewerFiles([]) }
-        else if (attachRow) { setAttachRow(null); setAttachFiles([]) }
+        else if (attachRow) { setAttachRow(null); setAttachFiles([]); setAttachRemovedIds([]) }
         else if (deleteTarget) setDeleteTarget(null)
-        else if (editOpen) { setEditOpen(false); setEditingRow(null) }
-        else if (createOpen) setCreateOpen(false)
+        else if (editOpen) {
+          if (editDirtyRef.current) {
+            const ok = window.confirm('Perubahan belum disimpan (tombol Perbarui Data belum diklik). Tutup dan buang perubahan?')
+            if (!ok) return
+          }
+          setEditOpen(false); setEditingRow(null)
+        }
+        else if (createOpen) {
+          if (createDirtyRef.current) {
+            const ok = window.confirm('Perubahan belum disimpan (tombol Simpan Realisasi belum diklik). Tutup dan buang perubahan?')
+            if (!ok) return
+          }
+          setCreateOpen(false)
+        }
       }
     }
     window.addEventListener('keydown', handleKey)
@@ -1104,6 +1283,19 @@ function RealisasiKinerjaForm({ currentUser }) {
       bukti_size: editingRow.bukti_size,
     }] : []),
   } : createInitial
+
+  // Dokumen yang sudah tersimpan untuk modal Tambah Dokumen (termasuk fallback legacy).
+  const attachExisting = attachRow ? (
+    buktiMap.get(attachRow.id) ?? (attachRow.bukti_path ? [{
+      id: `legacy-${attachRow.id}`,
+      realisasi_id: attachRow.id,
+      bukti_path: attachRow.bukti_path,
+      bukti_nama: attachRow.bukti_nama,
+      bukti_tipe: attachRow.bukti_tipe,
+      bukti_size: attachRow.bukti_size,
+      bukti_drive_id: attachRow.bukti_drive_id,
+    }] : [])
+  ) : []
 
   return (
     <div className="max-w-[1400px] mx-auto">
@@ -1174,7 +1366,7 @@ function RealisasiKinerjaForm({ currentUser }) {
         <div className="mb-space-lg flex items-start gap-space-sm rounded-xl border border-primary-fixed bg-primary-fixed/20 p-space-md text-primary">
           <span className="material-symbols-outlined text-[20px]">check_circle</span>
           <div>
-            <h3 className="font-title-sm text-title-sm font-bold">Realisasi berhasil disimpan</h3>
+            <h3 className="font-title-sm text-title-sm font-bold">Berhasil</h3>
             <p className="font-body-sm text-body-sm text-primary/80">{successMessage}</p>
           </div>
         </div>
@@ -1312,8 +1504,8 @@ function RealisasiKinerjaForm({ currentUser }) {
                         <button
                           type="button" onClick={() => openAttach(r)}
                           className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg border border-outline-variant text-secondary hover:bg-surface-container hover:text-primary transition-colors"
-                          title="Tambah dokumen"
-                          aria-label="Tambah dokumen"
+                          title="Kelola dokumen (tambah / hapus salah upload)"
+                          aria-label="Kelola dokumen"
                         >
                           <span className="material-symbols-outlined text-[16px]">note_add</span>
                         </button>
@@ -1327,8 +1519,8 @@ function RealisasiKinerjaForm({ currentUser }) {
                       <button
                         type="button" onClick={() => openAttach(r)}
                         className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg border border-dashed border-outline-variant text-secondary hover:bg-surface-container hover:text-primary transition-colors"
-                        title="Tambah dokumen"
-                        aria-label="Tambah dokumen"
+                        title="Kelola dokumen (tambah / hapus salah upload)"
+                        aria-label="Kelola dokumen"
                       >
                         <span className="material-symbols-outlined text-[16px]">note_add</span>
                       </button>
@@ -1435,6 +1627,8 @@ function RealisasiKinerjaForm({ currentUser }) {
           title="Tambah Realisasi"
           subtitle={userUnit ? userUnit.nama_unit : 'Input capaian kinerja seksi'}
           submitLabel="Simpan Realisasi"
+          savingLabel="Menyimpan..."
+          submitIcon="save"
           saving={savingCreate}
           onClose={() => !savingCreate && setCreateOpen(false)}
           onSubmit={handleSubmitCreate}
@@ -1445,6 +1639,7 @@ function RealisasiKinerjaForm({ currentUser }) {
           ikskNumber={ikskNumber}
           initial={createInitial}
           prevTotals={prevTotals}
+          dirtyRef={createDirtyRef}
         />
       )}
 
@@ -1454,7 +1649,9 @@ function RealisasiKinerjaForm({ currentUser }) {
           key={editingRow.id}
           title="Edit Realisasi"
           subtitle={editingRow.rencana ? editingRow.rencana.rencana_aksi.slice(0, 70) : 'Perbarui catatan realisasi'}
-          submitLabel="Perbarui"
+          submitLabel="Perbarui Data"
+          savingLabel="Memperbarui..."
+          submitIcon="update"
           saving={savingEdit}
           onClose={() => {
             if (savingEdit) return
@@ -1470,6 +1667,7 @@ function RealisasiKinerjaForm({ currentUser }) {
           initial={editInitial}
           accumulate={false}
           prevTotals={prevTotals}
+          dirtyRef={editDirtyRef}
         />
       )}
 
@@ -1478,21 +1676,81 @@ function RealisasiKinerjaForm({ currentUser }) {
         <BuktiViewer row={viewerRow} files={viewerFiles} onClose={() => { setViewerRow(null); setViewerFiles([]) }} />
       )}
 
-      {/* Tambah dokumen */}
+      {/* Tambah / hapus dokumen — staged, simpan via Perbarui Data */}
       {attachRow && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-space-md" onClick={() => !attaching && setAttachRow(null)} role="presentation">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-space-md"
+          onClick={() => { if (!attaching) { setAttachRow(null); setAttachFiles([]); setAttachRemovedIds([]) } }}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => event.preventDefault()}
+          role="presentation"
+        >
           <div role="dialog" aria-modal="true" aria-labelledby="attach-modal-title"
-            className="rounded-2xl bg-surface-container-lowest shadow-xl border border-surface-container p-space-lg max-w-[520px] w-full"
+            className="rounded-2xl bg-surface-container-lowest shadow-xl border border-surface-container p-space-lg max-w-[520px] w-full max-h-[90vh] overflow-y-auto"
             onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center gap-space-sm text-primary mb-space-sm">
-              <span className="material-symbols-outlined text-[28px]">note_add</span>
-              <h3 id="attach-modal-title" className="font-headline-md text-headline-md font-bold">Tambah Dokumen</h3>
+              <span className="material-symbols-outlined text-[28px]">folder_managed</span>
+              <h3 id="attach-modal-title" className="font-headline-md text-headline-md font-bold">Kelola Dokumen</h3>
             </div>
             <p className="font-body-sm text-body-sm text-secondary mb-space-sm">
               Realisasi <span className="font-bold text-on-surface">{attachRow.realisasi_kinerja}</span>
               {' '}• {formatTanggal(attachRow.tanggal_kegiatan)}
-              {' '}• sudah ada {(buktiMap.get(attachRow.id) ?? []).length || (attachRow.bukti_path ? 1 : 0)} dokumen.
+              {' '}• sudah ada {attachExisting.length} dokumen.
+              <span className="block mt-1 font-semibold">
+                Tandai hapus / pilih berkas baru dulu — belum tersimpan sampai tombol Perbarui Data diklik.
+              </span>
             </p>
+            {attachExisting.length > 0 && (
+              <div className="flex flex-col gap-space-2xs mb-space-sm">
+                <span className="font-label-sm text-label-sm font-bold text-secondary">
+                  Dokumen tersimpan — tandai hapus bila salah upload (belum terhapus):
+                </span>
+                {attachExisting.map((b) => {
+                  const marked = attachRemovedIds.includes(b.id)
+                  return (
+                    <div key={b.id} className="flex items-center gap-space-sm rounded-xl bg-surface-container-low px-space-sm py-space-sm font-body-sm text-body-sm">
+                      <span className="material-symbols-outlined text-primary-container text-[22px]">
+                        description
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-on-surface truncate">{b.bukti_nama}</div>
+                        <div className="text-secondary">{formatSize(b.bukti_size)}</div>
+                        {marked && (
+                          <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-surface-container px-space-2xs py-0.5 font-label-sm text-label-sm font-bold text-secondary">
+                            <span className="material-symbols-outlined text-[14px]">label</span>
+                            Ditandai hapus • belum tersimpan — aktif setelah Perbarui Data diklik
+                          </div>
+                        )}
+                      </div>
+                      <a href={buktiUrl(b.bukti_path)} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg text-secondary hover:bg-surface-container hover:text-primary transition-colors shrink-0"
+                        title={`Lihat ${b.bukti_nama}`} aria-label={`Lihat ${b.bukti_nama}`}>
+                        <span className="material-symbols-outlined text-[18px]">visibility</span>
+                      </a>
+                      {marked ? (
+                        <button type="button" onClick={() => undoAttachDelete(b)} disabled={attaching}
+                          className="inline-flex items-center gap-1 rounded-lg px-space-2xs py-1 font-label-sm text-label-sm font-bold text-primary hover:bg-primary-fixed/30 transition-colors shrink-0 disabled:opacity-50"
+                          title={`Urungkan hapus ${b.bukti_nama}`} aria-label={`Urungkan hapus ${b.bukti_nama}`}>
+                          <span className="material-symbols-outlined text-[16px]">undo</span> Urungkan
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => markAttachDelete(b)} disabled={attaching}
+                          className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg text-error hover:bg-error-container transition-colors shrink-0 disabled:opacity-50"
+                          title={`Tandai hapus ${b.bukti_nama} (baru terhapus setelah Perbarui Data diklik)`} aria-label={`Tandai hapus ${b.bukti_nama}`}>
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {(attachRemovedIds.length > 0 || attachFiles.length > 0) && (
+              <div className="rounded-xl bg-surface-container border border-outline-variant px-space-sm py-space-2xs font-label-sm text-label-sm font-bold text-secondary mb-space-sm">
+                {attachRemovedIds.length} ditandai hapus + {attachFiles.length} berkas baru = {attachExisting.length - attachRemovedIds.length + attachFiles.length} dokumen bila Perbarui Data diklik.
+                Belum ada perubahan tersimpan.
+              </div>
+            )}
             <input ref={attachInputRef} type="file" accept={ACCEPT_ATTR} multiple className="hidden"
               onChange={(e) => {
                 if (e.target.files?.length) setAttachFiles((cur) => [...cur, ...[...e.target.files]])
@@ -1525,14 +1783,14 @@ function RealisasiKinerjaForm({ currentUser }) {
               </div>
             )}
             <div className="flex justify-end gap-space-sm mt-space-md">
-              <button type="button" onClick={() => { setAttachRow(null); setAttachFiles([]) }} disabled={attaching}
+              <button type="button" onClick={() => { setAttachRow(null); setAttachFiles([]); setAttachRemovedIds([]) }} disabled={attaching}
                 className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg border border-outline-variant px-space-md font-body-md text-body-md font-bold text-secondary hover:bg-surface-container transition-colors disabled:opacity-50">
                 Batal
               </button>
-              <button type="button" onClick={handleAttachSubmit} disabled={attaching || attachFiles.length === 0}
+              <button type="button" onClick={handleAttachSave} disabled={attaching || (attachRemovedIds.length === 0 && attachFiles.length === 0)}
                 className="inline-flex items-center justify-center gap-space-2xs h-[42px] rounded-lg bg-primary px-space-md font-body-md text-body-md font-bold text-on-primary shadow-sm hover:bg-primary-container transition-colors disabled:opacity-60">
-                <span className="material-symbols-outlined text-[18px]">{attaching ? 'progress_activity' : 'upload'}</span>
-                {attaching ? 'Mengunggah...' : `Unggah ${attachFiles.length} Dokumen`}
+                <span className={`material-symbols-outlined text-[18px] ${attaching ? 'animate-spin' : ''}`}>{attaching ? 'progress_activity' : 'update'}</span>
+                {attaching ? 'Memperbarui...' : 'Perbarui Data'}
               </button>
             </div>
           </div>

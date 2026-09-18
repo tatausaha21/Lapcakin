@@ -290,8 +290,8 @@ function DashboardSeksi({ currentUser, onNavigate }) {
           </div>
           <h1 className="font-headline-lg text-headline-lg text-on-surface mt-space-2xs">Dashboard Seksi</h1>
           <p className="font-body-md text-body-md text-secondary max-w-3xl">
-            Pantau beban IKSK, kemajuan rencana aksi, capaian kinerja, dan serapan anggaran seksi Anda — langsung dari
-            data Supabase, bukan angka contoh.
+            Pantau beban IKSK, kemajuan rencana aksi, capaian kinerja, dan serapan anggaran seksi/unit Anda — isi realisasi
+            kinerja sesuai real dilapangan.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-space-xs shrink-0">
