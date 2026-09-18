@@ -164,7 +164,7 @@ function LoginModal({ mode = 'otentikasi', onClose, onLogin }) {
             Akses Terbatas
           </span>
           <h3 className="text-xl font-bold">{title}</h3>
-          <p className="text-xs text-emerald-200/90 mt-1">Gunakan akun NIP &amp; sandi resmi Kementerian Agama</p>
+          <p className="text-xs text-emerald-200/90 mt-1">Pilih Role Pengguna &amp; Username dan Password</p>
         </div>
 
         <form className="p-6 space-y-4" onSubmit={handleSubmit} noValidate>
@@ -199,7 +199,7 @@ function LoginModal({ mode = 'otentikasi', onClose, onLogin }) {
 
           <div>
             <label htmlFor="modal-username" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Username Pegawai
+              Username
             </label>
             <select
               id="modal-username"
