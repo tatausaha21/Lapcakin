@@ -252,9 +252,10 @@ export function computeOrganisasi({
       return (a.iksk?.nomor_urut ?? 999) - (b.iksk?.nomor_urut ?? 999)
     })
 
-  const capaians = rows.map((r) => r.capaian).filter((c) => c !== null && c !== undefined)
+  // Capaian null (IKSK tanpa data) dihitung 0%.
+  const capaians = rows.map((r) => r.capaian ?? 0)
   const persenValsAll = rows.map((r) => r.persenOrg).filter((p) => p !== null && p !== undefined)
-  const rataCapaian = capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null
+  const rataCapaian = rows.length > 0 ? capaians.reduce((a, b) => a + b, 0) / rows.length : null
   const avgRealisasiTarget = persenValsAll.length > 0 ? persenValsAll.reduce((a, b) => a + b, 0) / persenValsAll.length : null
   // Target hitung = target 1 tahun (100%). Target per triwulan (25/50/75/100)
   // hanya dipakai sebagai teks info tampilan, tidak dalam perhitungan.
@@ -308,8 +309,9 @@ export function ikskNumberOf(iksk, skById) {
  * - src/components/PublicPortal.jsx (grafik capaian per unit kerja)
  *
  * Rumus % realisasi + % capaian per rencana sama persis dengan
- * Laporan Kinerja Seksi; rata-rata capaian = rata-rata capaian
- * rencana unit tersebut (abaikan yang null), capping 0–120%.
+ * Laporan Kinerja Seksi; rata-rata capaian = jumlah capaian rencana
+ * unit tersebut dibagi jumlah rencana (yang belum ada realisasi /
+ * null dihitung 0%), capping 0–120%. Unit tanpa rencana => null.
  *
  * @returns {Array} [{ unit, rencana, terealisasi, rataCapaian,
  *   anggaran, serapan, kendala, bukti }] terurut capaian tertinggi.
@@ -359,12 +361,15 @@ export function computePerSeksi({
       const bukti = entries.filter((e) => e.bukti_path).length
       return { rencana, iksk, entries, persen, capaian, anggaran, serapan, kendala, bukti }
     })
-    const capaians = items.map((it) => it.capaian).filter((c) => c !== null && c !== undefined)
+    // Rencana yang belum ada realisasi (capaian null) dihitung 0%.
+    // Hanya unit tanpa rencana yang rataCapaiannya null.
     return {
       unit,
       rencana: items.length,
       terealisasi: items.filter((it) => it.entries.length > 0).length,
-      rataCapaian: capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null,
+      rataCapaian: items.length > 0
+        ? items.reduce((s, it) => s + (it.capaian ?? 0), 0) / items.length
+        : null,
       anggaran: items.reduce((s, it) => s + it.anggaran, 0),
       serapan: items.reduce((s, it) => s + it.serapan, 0),
       kendala: items.reduce((s, it) => s + it.kendala, 0),

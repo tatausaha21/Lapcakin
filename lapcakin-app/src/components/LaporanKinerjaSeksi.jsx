@@ -216,8 +216,8 @@ function LaporanKinerjaSeksi({ currentUser }) {
   }, [rencanaRows, cascadingById, ikskById, skById, realisasiRows, filterTahun, filterTriwulan, userUnit, search])
 
   const summary = useMemo(() => {
-    const capaians = recap.map((r) => r.capaian).filter((c) => c !== null)
-    const rataCapaian = capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null
+    // Rencana yang belum ada realisasi (capaian null) dihitung 0%.
+    const rataCapaian = recap.length > 0 ? recap.reduce((s, r) => s + (r.capaian ?? 0), 0) / recap.length : null
     const totalAnggaranRencana = recap.reduce((s, r) => s + (r.rencana.anggaran === null ? 0 : Number(r.rencana.anggaran) || 0), 0)
     const totalRealisasiAnggaran = recap.reduce((s, r) => s + (r.totalAnggaran ?? 0), 0)
     // Ringkasan kaki dokumen (sama pola dengan Laporan Kinerja Organisasi).

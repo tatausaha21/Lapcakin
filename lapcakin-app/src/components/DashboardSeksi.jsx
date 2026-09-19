@@ -234,14 +234,16 @@ function DashboardSeksi({ currentUser, onNavigate }) {
   }, [myRencana, myRealisasi, ikskById, skById, rencanaById, cascadingById])
 
   const summary = useMemo(() => {
-    const capaians = perIksk.map((g) => g.capaian).filter((c) => c !== null)
-    const bukti = myRealisasi.filter((e) => e.bukti_path).length
+    // Rencana yang belum ada realisasi (capaian null) dihitung 0%.
+    const rataCapaian = myRencana.length > 0
+      ? myRencana.reduce((s, r) => s + (r.capaian ?? 0), 0) / myRencana.length
+      : null
     return {
       iksk: perIksk.length,
       rencana: myRencana.length,
       realisasi: myRealisasi.length,
-      bukti,
-      rataCapaian: capaians.length > 0 ? capaians.reduce((a, b) => a + b, 0) / capaians.length : null,
+      bukti: myRealisasi.filter((e) => e.bukti_path).length,
+      rataCapaian,
       anggaran: myRencana.reduce((s, r) => s + (r.anggaran === null ? 0 : Number(r.anggaran) || 0), 0),
       serapan: myRealisasi.reduce((s, e) => s + (e.realisasi_anggaran === null ? 0 : Number(e.realisasi_anggaran) || 0), 0),
     }

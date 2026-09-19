@@ -158,7 +158,7 @@ function KepalaSeksiPage({ activePage, currentUser }) {
   }, [rows, search, statusFilter])
 
   const rataCapaian =
-    rows.length === 0 ? 0 : rows.reduce((s, r) => s + calcCapaian(r.realisasi, r.target), 0) / rows.length
+    rows.length === 0 ? 0 : rows.reduce((s, r) => s + (calcCapaian(r.realisasi, r.target) ?? 0), 0) / rows.length
 
   const tabBtnActive =
     'inline-flex items-center gap-space-xs px-space-md py-space-xs rounded-lg bg-surface-container-lowest text-primary font-title-sm text-title-sm font-bold shadow-sm transition-all'

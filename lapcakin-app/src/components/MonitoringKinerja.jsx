@@ -247,6 +247,7 @@ function MonitoringKinerja() {
   }, [recap])
 
   // Ringkasan per seksi untuk panel monitoring cepat.
+  // Rencana yang belum ada realisasi (capaian null) dihitung 0%.
   const perSeksi = useMemo(() => {
     const map = new Map()
     for (const row of recap) {
@@ -258,19 +259,19 @@ function MonitoringKinerja() {
           rencana: 0,
           terealisasi: 0,
           terkendala: 0,
-          capaians: [],
+          totalCapaian: 0,
         })
       }
       const g = map.get(unitId)
       g.rencana += 1
       if (row.entries.length > 0) g.terealisasi += 1
       if (row.kendalaList.length > 0) g.terkendala += 1
-      if (row.capaian !== null) g.capaians.push(row.capaian)
+      g.totalCapaian += row.capaian ?? 0
     }
     return [...map.values()]
       .map((g) => ({
         ...g,
-        rataCapaian: g.capaians.length > 0 ? g.capaians.reduce((a, b) => a + b, 0) / g.capaians.length : null,
+        rataCapaian: g.rencana > 0 ? g.totalCapaian / g.rencana : null,
       }))
       .sort((a, b) => a.unitNama.localeCompare(b.unitNama, 'id'))
   }, [recap])
