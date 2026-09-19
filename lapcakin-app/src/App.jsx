@@ -54,6 +54,11 @@ function toProfile(row, authUserId) {
   }
 }
 
+function isSeksiRole(peran) {
+  if (peran === 'Kepala Satker') return true
+  return (peran ?? '').toLowerCase().includes('kepala seksi')
+}
+
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [currentUser, setCurrentUser] = useState(null)
@@ -94,19 +99,29 @@ function App() {
           }
           if (!cancelled) {
             if (profile && profile.status === 'Aktif') {
-              setCurrentUser(toProfile(profile, authUser.id))
+              const userProfile = toProfile(profile, authUser.id)
+              setCurrentUser(userProfile)
+              setActivePage(isSeksiRole(userProfile.peran) ? 'dashboard-seksi' : 'dashboard')
             } else {
               await supabase.auth.signOut()
-              setCurrentUser(getDemoSession())
+              const demoUser = getDemoSession()
+              setCurrentUser(demoUser)
+              if (demoUser) setActivePage(isSeksiRole(demoUser.peran) ? 'dashboard-seksi' : 'dashboard')
             }
             setAuthChecked(true)
             return
           }
         } else if (!cancelled) {
-          setCurrentUser(getDemoSession())
+          const demoUser = getDemoSession()
+          setCurrentUser(demoUser)
+          if (demoUser) setActivePage(isSeksiRole(demoUser.peran) ? 'dashboard-seksi' : 'dashboard')
         }
       } catch {
-        if (!cancelled) setCurrentUser(getDemoSession())
+        if (!cancelled) {
+          const demoUser = getDemoSession()
+          setCurrentUser(demoUser)
+          if (demoUser) setActivePage(isSeksiRole(demoUser.peran) ? 'dashboard-seksi' : 'dashboard')
+        }
       }
       if (!cancelled) setAuthChecked(true)
     }
@@ -124,12 +139,25 @@ function App() {
     }
   }, [])
 
-  // Default halaman mengikuti peran: Kepala Satker langsung ke Input Realisasi Seksi.
+  // Default halaman mengikuti peran: Seksi (Kepala Satker / Kepala Seksi)
+  // langsung ke Dashboard Seksi, Admin ke Dashboard Organisasi.
   useEffect(() => {
-    if (currentUser?.peran === 'Kepala Satker' && activePage === 'dashboard') {
-      setActivePage('input-realisasi-kinerja')
+    if (!currentUser) return
+    if (isSeksiRole(currentUser.peran)) {
+      if (activePage === 'dashboard') {
+        setActivePage('dashboard-seksi')
+      }
+    } else if (seksiPages.includes(activePage)) {
+      setActivePage('dashboard')
     }
   }, [currentUser, activePage])
+
+  const handleLogin = (user) => {
+    setCurrentUser(user)
+    // Langsung arahkan tanpa menunggu useEffect agar tidak sempat
+    // menampilkan Dashboard Admin saat login seksi.
+    setActivePage(isSeksiRole(user?.peran) ? 'dashboard-seksi' : 'dashboard')
+  }
 
   const handleLogout = async () => {
     try {
@@ -151,7 +179,7 @@ function App() {
   }
 
   if (!currentUser) {
-    return <PublicPortal onLogin={setCurrentUser} />
+    return <PublicPortal onLogin={handleLogin} />
   }
 
   return (
