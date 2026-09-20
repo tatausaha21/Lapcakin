@@ -220,10 +220,9 @@ export function computeOrganisasi({
     .map((g) => {
       const { iksk, sk, items } = g
       // % Realisasi Target organisasi = rata-rata % realisasi seluruh seksi
-      // pada IKSK yang sama (abaikan yang null).
-      const persenVals = items.map((it) => it.persen).filter((p) => p !== null && p !== undefined)
-      const persenOrg = persenVals.length > 0
-        ? persenVals.reduce((a, b) => a + b, 0) / persenVals.length
+      // pada IKSK yang sama. Rencana yang null dihitung 0%.
+      const persenOrg = items.length > 0
+        ? items.reduce((s, it) => s + (it.persen ?? 0), 0) / items.length
         : null
       const capaian = calcCapaian(persenOrg, iksk?.target_tahunan, iksk?.polaritas ?? 'Positive')
       const anggaran = items.reduce((s, it) => s + (it.rencana.anggaran === null || it.rencana.anggaran === undefined ? 0 : Number(it.rencana.anggaran) || 0), 0)
@@ -252,11 +251,9 @@ export function computeOrganisasi({
       return (a.iksk?.nomor_urut ?? 999) - (b.iksk?.nomor_urut ?? 999)
     })
 
-  // Capaian null (IKSK tanpa data) dihitung 0%.
   const capaians = rows.map((r) => r.capaian ?? 0)
-  const persenValsAll = rows.map((r) => r.persenOrg).filter((p) => p !== null && p !== undefined)
   const rataCapaian = rows.length > 0 ? capaians.reduce((a, b) => a + b, 0) / rows.length : null
-  const avgRealisasiTarget = persenValsAll.length > 0 ? persenValsAll.reduce((a, b) => a + b, 0) / persenValsAll.length : null
+  const avgRealisasiTarget = rows.length > 0 ? rows.reduce((s, r) => s + (r.persenOrg ?? 0), 0) / rows.length : null
   // Target hitung = target 1 tahun (100%). Target per triwulan (25/50/75/100)
   // hanya dipakai sebagai teks info tampilan, tidak dalam perhitungan.
   const targetTriwulan = 100
