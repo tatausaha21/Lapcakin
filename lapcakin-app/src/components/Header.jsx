@@ -4,7 +4,7 @@ function Header({ currentUser }) {
       <div className="flex min-w-0 flex-wrap items-center gap-space-md">
         <div className="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full bg-secondary-container text-on-secondary-fixed">
           <span className="material-symbols-outlined text-[16px] text-primary">event_available</span>
-          <span className="font-label-md text-label-md font-semibold tracking-wide">Tahun Anggaran 2026 - Triwulan I</span>
+          <span className="font-label-md text-label-md font-semibold tracking-wide">Renstra 2025-2029</span>
         </div>
         <div className="hidden xl:inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full bg-surface-container text-secondary">
           <span className="material-symbols-outlined text-[16px]">verified</span>
