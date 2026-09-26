@@ -480,7 +480,7 @@ function PublicPortal({ onLogin }) {
             Transparansi &amp; Akuntabilitas Kinerja
           </h1>
           <p className="mt-2 text-emerald-100/90 text-sm sm:text-base max-w-3xl leading-relaxed font-normal">
-            Mewujudkan Pemerintahan yang berorientasi hasil untuk pelayanan publik yang lebih baik dilingkungan Kankemenag Kabupaten Lebak, sesuai Perpres Nomor 29 Tahun 2014 & KMA Nomor 1807 Tahun 2025.
+            Mewujudkan Kantor Kementerian Agama Kabupaten Lebak Yang berdampak untuk pelayanan publik yang lebih baik, sesuai Perpres Nomor 29 Tahun 2014 & KMA Nomor 1807 Tahun 2025.
           </p>
         </section>
 
