@@ -205,7 +205,7 @@ function MonitoringKinerja() {
             realisasi: e.realisasi_kinerja,
           }))
         const bukti = entries.filter((e) => e.bukti_path)
-        return { rencana: r, cascading: r.cascading, iksk, sk, unit, entries, persen, totalAnggaran, capaian, kendalaList, bukti }
+        return { rencana: r, cascading: r.cascading, iksk, sk, unit, entries, persen, totalAnggaran, capaian, kendalaList, bukti, realisasi: total }
       })
       .sort((a, b) => {
         const unitA = a.unit?.nama_unit ?? 'zzz'
@@ -511,6 +511,7 @@ function MonitoringKinerja() {
                 <th className="text-left px-space-md py-space-sm font-label-sm text-label-sm text-secondary whitespace-nowrap w-[90px]">No IKSK</th>
                 <th className="text-left px-space-md py-space-sm font-label-sm text-label-sm text-secondary">IKSK / Rencana Kinerja</th>
                 <th className="text-left px-space-md py-space-sm font-label-sm text-label-sm text-secondary whitespace-nowrap w-[120px]">Target</th>
+                <th className="text-left px-space-md py-space-sm font-label-sm text-label-sm text-secondary whitespace-nowrap w-[140px]">Realisasi Target Kinerja</th>
                 <th className="text-left px-space-md py-space-sm font-label-sm text-label-sm text-secondary whitespace-nowrap w-[130px]">% Realisasi Target</th>
                 <th className="text-left px-space-md py-space-sm font-label-sm text-label-sm text-secondary whitespace-nowrap w-[160px]">Anggaran / Realisasi</th>
                 <th className="text-left px-space-md py-space-sm font-label-sm text-label-sm text-secondary whitespace-nowrap w-[130px]">% Capaian Kinerja</th>
@@ -521,7 +522,7 @@ function MonitoringKinerja() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="10" className="px-space-md py-space-xl text-center font-body-sm text-body-sm text-secondary">
+                  <td colSpan="11" className="px-space-md py-space-xl text-center font-body-sm text-body-sm text-secondary">
                     <span className="flex items-center justify-center gap-space-2xs">
                       <span className="material-symbols-outlined text-[24px] animate-spin">progress_activity</span>
                       Memuat data dari Supabase...
@@ -558,6 +559,15 @@ function MonitoringKinerja() {
                     <td className="px-space-md py-space-sm whitespace-nowrap">
                       <span className="font-body-sm text-body-sm font-extrabold text-on-surface">{row.rencana.target_kinerja}</span>
                       <span className="ml-1 font-label-sm text-label-sm text-secondary">({row.rencana.satuan})</span>
+                    </td>
+                    <td className="px-space-md py-space-sm whitespace-nowrap">
+                      {row.realisasi === null || Number.isNaN(row.realisasi) ? (
+                        <span className="text-secondary">-</span>
+                      ) : row.rencana.satuan === 'Persen' ? (
+                        <span className="font-bold text-primary-container">{row.realisasi.toFixed(2)}%</span>
+                      ) : (
+                        <span className="font-bold text-on-surface font-extrabold">{Number.isInteger(row.realisasi) ? String(row.realisasi) : row.realisasi.toFixed(2)}</span>
+                      )}
                     </td>
                     <td className="px-space-md py-space-sm whitespace-nowrap">
                       {row.persen === null ? (
@@ -638,7 +648,7 @@ function MonitoringKinerja() {
                 )
               }) : (
                 <tr>
-                  <td colSpan="10" className="px-space-md py-space-xl text-center font-body-sm text-body-sm text-secondary">
+                  <td colSpan="11" className="px-space-md py-space-xl text-center font-body-sm text-body-sm text-secondary">
                     <span className="flex items-center justify-center gap-space-2xs">
                       <span className="material-symbols-outlined text-[24px]">search_off</span>
                       {search || filterTahun !== 'Semua' || filterTriwulan !== 'Semua' || filterUnit !== 'Semua' || hanyaTerkendala
