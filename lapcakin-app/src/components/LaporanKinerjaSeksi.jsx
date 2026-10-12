@@ -13,7 +13,7 @@ function parseNum(str) {
 // % realisasi target per rencana (dari nilai pengisian TERAKHIR — sama dengan
 // tabel riwayat di Input Realisasi Kinerja, yang nilainya sudah akumulasi):
 // Persen -> (total / target) * 100 capping 0..120;
-// selain itu -> target - total.
+// selain itu (Nilai/Rasio/Teks) -> total (nilai realisasi).
 function calcRealisasiPersen(total, target, satuan) {
   if (Number.isNaN(total)) return null
   if (satuan === 'Persen') {
@@ -23,7 +23,7 @@ function calcRealisasiPersen(total, target, satuan) {
   }
   const t = parseNum(target)
   if (Number.isNaN(t)) return null
-  return t - total
+  return total
 }
 
 // % capaian kinerja dari polaritas IKSK (capping 0..120):
@@ -582,7 +582,7 @@ function LaporanKinerjaSeksi({ currentUser }) {
                           </div>
                         </div>
                       ) : (
-                        <span className="font-bold text-tertiary-container" title="target − realisasi">
+                        <span className="font-bold text-tertiary-container" title={`Nilai realisasi: ${row.persen}`}>
                           {Number.isInteger(row.persen) ? String(row.persen) : row.persen.toFixed(2)}
                         </span>
                       )}

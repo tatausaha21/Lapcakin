@@ -11,7 +11,7 @@ export function parseNum(str) {
 
 // % realisasi target per rencana (sama persis dengan laporan seksi):
 // Persen -> (total / target) * 100 capping 0..120;
-// selain itu -> target - total.
+// selain itu (Nilai/Rasio/Teks) -> total (nilai realisasi).
 export function calcRealisasiPersen(total, target, satuan) {
   if (Number.isNaN(total)) return null
   if (satuan === 'Persen') {
@@ -21,7 +21,7 @@ export function calcRealisasiPersen(total, target, satuan) {
   }
   const t = parseNum(target)
   if (Number.isNaN(t)) return null
-  return t - total
+  return total
 }
 
 // % capaian kinerja dari polaritas IKSK (capping 0..120) — sama dengan seksi:

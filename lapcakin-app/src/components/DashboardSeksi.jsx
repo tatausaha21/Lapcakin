@@ -18,17 +18,6 @@ function parseNum(str) {
   return m ? Number(m[0]) : NaN
 }
 
-function calcRealisasiPersen(total, target, satuan) {
-  if (Number.isNaN(total)) return null
-  const t = parseNum(target)
-  if (Number.isNaN(t)) return null
-  if (satuan === 'Persen') {
-    if (t === 0) return null
-    return Math.min(120, Math.max(0, (total / t) * 100))
-  }
-  return t - total
-}
-
 function calcCapaian(persenRealisasi, targetTahunan, polaritas) {
   if (persenRealisasi === null || persenRealisasi === undefined) return null
   const t = parseNum(targetTahunan)
@@ -218,9 +207,9 @@ function DashboardSeksi({ currentUser, onNavigate }) {
         if (!Number.isNaN(totalReal) && !Number.isNaN(totalTarget)) {
           persen = satuan === 'Persen'
             ? (totalTarget === 0 ? null : Math.min(120, Math.max(0, (totalReal / totalTarget) * 100)))
-            : totalTarget - totalReal
+            : totalReal
         }
-        const capaian = calcCapaian(satuan === 'Persen' ? persen : null, g.iksk.target_tahunan, g.iksk.polaritas ?? 'Positive')
+        const capaian = calcCapaian(satuan === 'Persen' ? persen : totalReal, g.iksk.target_tahunan, g.iksk.polaritas ?? 'Positive')
         const anggaran = g.rencana.reduce((s, r) => s + (r.anggaran === null ? 0 : Number(r.anggaran) || 0), 0)
         const serapan = g.entries.reduce((s, e) => s + (e.realisasi_anggaran === null ? 0 : Number(e.realisasi_anggaran) || 0), 0)
         return { ...g, satuan, persen, capaian, anggaran, serapan }

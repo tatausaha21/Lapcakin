@@ -19,17 +19,12 @@ function calcPersen(realisasi, target) {
   return Math.min(120, Math.max(0, (r / t) * 100))
 }
 
-// Satuan selain Persen (Nilai/Rasio/Teks): target - realisasi.
+// Satuan selain Persen (Nilai/Rasio/Teks): realisasi.
 function calcSelisih(realisasi, target) {
   const r = parseNum(realisasi)
   const t = parseNum(target)
   if (Number.isNaN(r) || Number.isNaN(t)) return null
-  return t - r
-}
-
-function formatSelisih(value) {
-  if (value === null) return '-'
-  return Number.isInteger(value) ? String(value) : value.toFixed(2)
+  return r
 }
 
 function formatRupiah(value) {
@@ -459,7 +454,7 @@ function RealisasiWizard({
                       <span className="font-label-sm text-label-sm text-primary-container font-semibold">
                         {livePersen !== null
                           ? `Pratinjau: ${livePersen.toFixed(2)}% (capping 0–120%)`
-                          : `Pratinjau selisih: ${formatSelisih(liveSelisih)} (target − realisasi)`}
+                          : `Pratinjau realisasi: ${liveSelisih}`}
                       </span>
                     )}
                   </div>
@@ -1261,8 +1256,8 @@ function RealisasiKinerjaForm({ currentUser }) {
       )
     }
     return (
-      <span className="font-bold text-tertiary-container" title={`${r.target} − ${r.realisasi_kinerja} (target − realisasi)`}>
-        {formatSelisih(r.selisih)}
+      <span className="font-bold text-tertiary-container" title={`Nilai realisasi: ${r.realisasi_kinerja}`}>
+        {r.realisasi_kinerja}
       </span>
     )
   }
@@ -1563,7 +1558,7 @@ function RealisasiKinerjaForm({ currentUser }) {
         <div className="p-space-md bg-surface-container-low flex flex-col gap-space-sm text-secondary font-label-sm text-label-sm">
           <div className="flex items-center gap-space-xs">
             <span className="material-symbols-outlined text-[16px] text-primary-container">info</span>
-            <span>% = (realisasi / target) × 100 (capping 0–120%) bila satuan Persen; selain itu = target − realisasi. Satu rencana tampil 1 baris (isian terakhir, nilai sudah akumulasi).</span>
+            <span>% = (realisasi / target) × 100 (capping 0–120%) bila satuan Persen; selain itu menampilkan nilai realisasi. Satu rencana tampil 1 baris (isian terakhir, nilai sudah akumulasi).</span>
           </div>
           {filtered.length > 0 && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border-t border-surface-container pt-space-sm">
