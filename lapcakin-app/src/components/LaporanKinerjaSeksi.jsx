@@ -216,8 +216,17 @@ function LaporanKinerjaSeksi({ currentUser }) {
   }, [rencanaRows, cascadingById, ikskById, skById, realisasiRows, filterTahun, filterTriwulan, userUnit, search])
 
   const summary = useMemo(() => {
-    // Rencana yang belum ada realisasi (capaian null) dihitung 0%.
-    const rataCapaian = recap.length > 0 ? recap.reduce((s, r) => s + (r.capaian ?? 0), 0) / recap.length : null
+    // Rata-rata capaian kinerja per seksi = rata-rata dari capaian per IKSK
+    // (sesuai kaidah: jumlah kolom % capaian kinerja / jumlah IKSK perseksi)
+    const byIksk = new Map()
+    for (const r of recap) {
+      const ikskId = r.iksk?.id ?? 'no-iksk'
+      if (!byIksk.has(ikskId)) byIksk.set(ikskId, { iksk: r.iksk, capaianList: [] })
+      byIksk.get(ikskId).capaianList.push(r.capaian ?? 0)
+    }
+    const ikskAverages = [...byIksk.values()].map((g) => g.capaianList.reduce((a, b) => a + b, 0) / g.capaianList.length)
+    const rataCapaian = ikskAverages.length > 0 ? ikskAverages.reduce((a, b) => a + b, 0) / ikskAverages.length : null
+
     const totalAnggaranRencana = recap.reduce((s, r) => s + (r.rencana.anggaran === null ? 0 : Number(r.rencana.anggaran) || 0), 0)
     const totalRealisasiAnggaran = recap.reduce((s, r) => s + (r.totalAnggaran ?? 0), 0)
     // Ringkasan kaki dokumen (sama pola dengan Laporan Kinerja Organisasi).
