@@ -49,8 +49,8 @@ function formatTanggal(iso) {
 function predikat(capaian) {
   if (capaian === null || capaian === undefined) return { label: 'Belum terhitung', cls: 'bg-surface-container text-secondary' }
   if (capaian >= 100) return { label: 'Sangat Baik', cls: 'bg-primary-fixed text-on-primary-fixed' }
-  if (capaian >= 85) return { label: 'Baik', cls: 'bg-secondary-container text-on-secondary-container' }
-  if (capaian >= 70) return { label: 'Cukup', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' }
+  if (capaian >= 80) return { label: 'Baik', cls: 'bg-secondary-container text-on-secondary-container' }
+  if (capaian >= 50) return { label: 'Cukup', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' }
   return { label: 'Kurang', cls: 'bg-error-container text-on-error-container' }
 }
 

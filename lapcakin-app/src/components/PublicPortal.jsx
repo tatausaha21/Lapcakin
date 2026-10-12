@@ -115,8 +115,8 @@ const triwulanOptions = [
 
 function predikat(capaian) {
   if (capaian >= 100) return { label: 'Sangat Baik', cls: 'bg-emerald-100 text-emerald-800' }
-  if (capaian >= 85) return { label: 'Baik', cls: 'bg-blue-100 text-blue-800' }
-  if (capaian >= 70) return { label: 'Cukup', cls: 'bg-amber-100 text-amber-800' }
+  if (capaian >= 80) return { label: 'Baik', cls: 'bg-blue-100 text-blue-800' }
+  if (capaian >= 50) return { label: 'Cukup', cls: 'bg-amber-100 text-amber-800' }
   return { label: 'Kurang', cls: 'bg-rose-100 text-rose-700' }
 }
 
