@@ -198,6 +198,10 @@ function RealisasiWizard({
   const stepChangedAt = useRef(0)
 
   useEffect(() => {
+    setForm(initial)
+  }, [initial])
+
+  useEffect(() => {
     stepChangedAt.current = Date.now()
     // Lepaskan fokus tombol Lanjut agar aktivasi keyboard/klik ganda
     // tidak nyasar ke tombol submit yang muncul di posisi sama.
